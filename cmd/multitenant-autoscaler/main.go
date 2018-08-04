@@ -23,7 +23,7 @@ import (
 
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/signals"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	kpav1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	"github.com/knative/serving/pkg/autoscaler"
 	"github.com/knative/serving/pkg/autoscaler/statserver"
 	clientset "github.com/knative/serving/pkg/client/clientset/versioned"
@@ -35,7 +35,6 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
@@ -99,7 +98,7 @@ func main() {
 		logger.Fatal("Error building serving clientset.", zap.Error(err))
 	}
 
-	revisionScaler := autoscaler.NewRevisionScaler(servingClientSet, scaleClient, logger)
+	kpaScaler := autoscaler.NewKPAScaler(servingClientSet, scaleClient, logger)
 
 	rawConfig, err := configmap.Load("/etc/config-autoscaler")
 	if err != nil {
@@ -111,7 +110,7 @@ func main() {
 		logger.Fatalf("Error loading config-autoscaler: %v", err)
 	}
 
-	multiScaler := autoscaler.NewMultiScaler(config, revisionScaler, stopCh, uniScalerFactory, logger)
+	multiScaler := autoscaler.NewMultiScaler(config, kpaScaler, stopCh, uniScalerFactory, logger)
 
 	opt := reconciler.Options{
 		KubeClientSet:    kubeClientSet,
@@ -120,9 +119,9 @@ func main() {
 	}
 
 	servingInformerFactory := informers.NewSharedInformerFactory(servingClientSet, time.Second*30)
-	revisionInformer := servingInformerFactory.Serving().V1alpha1().Revisions()
+	kpaInformer := servingInformerFactory.Autoscaling().V1alpha1().PodAutoscalers()
 
-	ctl := autoscaling.NewController(&opt, revisionInformer, multiScaler, time.Second*30)
+	ctl := autoscaling.NewController(&opt, kpaInformer, multiScaler, time.Second*30)
 
 	// Start the serving informer factory.
 	servingInformerFactory.Start(stopCh)
@@ -130,7 +129,7 @@ func main() {
 	// Wait for the caches to be synced before starting controllers.
 	logger.Info("Waiting for informer caches to sync")
 	for i, synced := range []cache.InformerSynced{
-		revisionInformer.Informer().HasSynced,
+		kpaInformer.Informer().HasSynced,
 	} {
 		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
 			logger.Fatalf("failed to wait for cache at index %v to sync", i)
@@ -185,24 +184,16 @@ func main() {
 	statsServer.Shutdown(time.Second * 5)
 }
 
-func uniScalerFactory(rev *v1alpha1.Revision, config *autoscaler.Config) (autoscaler.UniScaler, error) {
-	// Create a stats reporter which tags statistics by revision namespace, revision controller name, and revision name.
-	reporter, err := autoscaler.NewStatsReporter(rev.Namespace, revisionControllerName(rev), rev.Name)
+func uniScalerFactory(kpa *kpav1alpha1.PodAutoscaler, config *autoscaler.Config) (autoscaler.UniScaler, error) {
+	// Create a stats reporter which tags statistics by namespace, revision controller name, and name.
+	// TODO(mattmoor): What is the controller name for?  This is harder to get with KPA.
+	reporter, err := autoscaler.NewStatsReporter(kpa.Namespace, kpa.Name, kpa.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	return autoscaler.New(config, rev.Spec.ConcurrencyModel, reporter), nil
-}
-
-func revisionControllerName(rev *v1alpha1.Revision) string {
-	var controllerName string
-	// Get the name of the revision's controller. If the revision has no controller, use the empty string as the
-	// controller name.
-	if controller := metav1.GetControllerOf(rev); controller != nil {
-		controllerName = controller.Name
-	}
-	return controllerName
+	// TODO(mattmoor): We need to add ConcurrencyModel to the KPA Spec.
+	return autoscaler.New(config, "Multi", reporter), nil
 }
 
 func init() {

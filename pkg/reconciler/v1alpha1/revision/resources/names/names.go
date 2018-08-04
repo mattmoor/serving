@@ -24,6 +24,11 @@ func Deployment(rev *v1alpha1.Revision) string {
 	return rev.Name + "-deployment"
 }
 
+func KPA(rev *v1alpha1.Revision) string {
+	// TODO(mattmoor): Switch when the autoscaling controller uses a KPA informer.
+	return rev.Name // + "-kpa"
+}
+
 func Autoscaler(rev *v1alpha1.Revision) string {
 	return rev.Name + "-autoscaler"
 }

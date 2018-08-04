@@ -68,6 +68,7 @@ type RevisionTemplateSpec struct {
 
 // RevisionServingStateType is an enumeration of the levels of serving readiness of the Revision.
 // See also: https://github.com/knative/serving/blob/master/docs/spec/errors.md#error-conditions-and-reporting
+// TODO(mattmoor): Combine with the KPA concept.
 type RevisionServingStateType string
 
 const (

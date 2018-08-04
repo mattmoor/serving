@@ -39,6 +39,7 @@ import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/controller"
 	. "github.com/knative/pkg/logging/testing"
+	kpav1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	istiov1alpha3 "github.com/knative/serving/pkg/apis/istio/v1alpha3"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	"github.com/knative/serving/pkg/reconciler"
@@ -51,6 +52,7 @@ type Listers struct {
 	Route         *RouteLister
 	Configuration *ConfigurationLister
 	Revision      *RevisionLister
+	PodAutoscaler *PodAutoscalerLister
 
 	VirtualService *VirtualServiceLister
 
@@ -95,6 +97,13 @@ func (f *Listers) GetRevisionLister() *RevisionLister {
 		return &RevisionLister{}
 	}
 	return f.Revision
+}
+
+func (f *Listers) GetPodAutoscalerLister() *PodAutoscalerLister {
+	if f.PodAutoscaler == nil {
+		return &PodAutoscalerLister{}
+	}
+	return f.PodAutoscaler
 }
 
 func (f *Listers) GetBuildLister() *BuildLister {
@@ -171,6 +180,9 @@ func (f *Listers) GetServingObjects() []runtime.Object {
 	for _, r := range f.GetRevisionLister().Items {
 		objs = append(objs, r)
 	}
+	for _, r := range f.GetPodAutoscalerLister().Items {
+		objs = append(objs, r)
+	}
 	for _, r := range f.GetVirtualServiceLister().Items {
 		objs = append(objs, r)
 	}
@@ -203,6 +215,8 @@ func NewListers(objs []runtime.Object) Listers {
 			ls.Configuration.Items = append(ls.Configuration.Items, o)
 		case *v1alpha1.Revision:
 			ls.Revision.Items = append(ls.Revision.Items, o)
+		case *kpav1alpha1.PodAutoscaler:
+			ls.PodAutoscaler.Items = append(ls.PodAutoscaler.Items, o)
 
 		case *istiov1alpha3.VirtualService:
 			ls.VirtualService.Items = append(ls.VirtualService.Items, o)

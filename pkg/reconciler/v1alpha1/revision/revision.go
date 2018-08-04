@@ -38,6 +38,7 @@ import (
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
+	autoscalinginformers "github.com/knative/serving/pkg/client/informers/externalversions/autoscaling/v1alpha1"
 	servinginformers "github.com/knative/serving/pkg/client/informers/externalversions/serving/v1alpha1"
 	vpav1alpha1informers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/poc.autoscaling.k8s.io/v1alpha1"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
@@ -53,6 +54,7 @@ import (
 	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	kpalisters "github.com/knative/serving/pkg/client/listers/autoscaling/v1alpha1"
 	listers "github.com/knative/serving/pkg/client/listers/serving/v1alpha1"
 	"github.com/knative/serving/pkg/reconciler"
 )
@@ -88,6 +90,7 @@ type Reconciler struct {
 
 	// lister indexes properties about Revision
 	revisionLister   listers.RevisionLister
+	kpaLister        kpalisters.PodAutoscalerLister
 	buildLister      buildlisters.BuildLister
 	deploymentLister appsv1listers.DeploymentLister
 	serviceLister    corev1listers.ServiceLister
@@ -137,6 +140,7 @@ func NewController(
 	opt reconciler.Options,
 	vpaClient vpa.Interface,
 	revisionInformer servinginformers.RevisionInformer,
+	kpaInformer autoscalinginformers.PodAutoscalerInformer,
 	buildInformer buildinformers.BuildInformer,
 	deploymentInformer appsv1informers.DeploymentInformer,
 	serviceInformer corev1informers.ServiceInformer,
@@ -149,6 +153,7 @@ func NewController(
 		Base:             reconciler.NewBase(opt, controllerAgentName),
 		vpaClient:        vpaClient,
 		revisionLister:   revisionInformer.Lister(),
+		kpaLister:        kpaInformer.Lister(),
 		buildLister:      buildInformer.Lister(),
 		deploymentLister: deploymentInformer.Lister(),
 		serviceLister:    serviceInformer.Lister(),
@@ -164,6 +169,14 @@ func NewController(
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 		DeleteFunc: impl.Enqueue,
+	})
+
+	kpaInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("Revision")),
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc:    impl.EnqueueControllerOf,
+			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		},
 	})
 
 	buildInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -299,9 +312,11 @@ func (c *Reconciler) reconcile(ctx context.Context, rev *v1alpha1.Revision) erro
 			name: "user k8s service",
 			f:    c.reconcileService,
 		}, {
-			// Ensures our namespace has the configuration for the fluentd sidecar.
 			name: "fluentd configmap",
 			f:    c.reconcileFluentdConfigMap,
+		}, {
+			name: "KPA",
+			f:    c.reconcileKPA,
 		}, {
 			name: "autoscaler deployment",
 			f:    c.reconcileAutoscalerDeployment,

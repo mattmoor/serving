@@ -23,6 +23,7 @@ import (
 	"time"
 
 	commonlogkey "github.com/knative/pkg/logging/logkey"
+	kpav1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	"github.com/knative/serving/pkg/logging"
 	"github.com/knative/serving/pkg/logging/logkey"
@@ -37,7 +38,7 @@ const (
 	scaleBufferSize = 10
 )
 
-// UniScaler records statistics for a particular revision and proposes the scale for the revision based on those statistics.
+// UniScaler records statistics for a particular KPA and proposes the scale for the KPA based on those statistics.
 type UniScaler interface {
 	// Record records the given statistics.
 	Record(context.Context, Stat)
@@ -47,13 +48,19 @@ type UniScaler interface {
 	Scale(context.Context, time.Time) (int32, bool)
 }
 
-// UniScalerFactory creates a UniScaler for a given revision using the given configuration.
-type UniScalerFactory func(*v1alpha1.Revision, *Config) (UniScaler, error)
+// UniScalerFactory creates a UniScaler for a given KPA using the given configuration.
+type UniScalerFactory func(*kpav1alpha1.PodAutoscaler, *Config) (UniScaler, error)
 
 // RevisionScaler knows how to scale revisions.
 type RevisionScaler interface {
 	// Scale attempts to scale the given revision to the desired scale.
 	Scale(rev *v1alpha1.Revision, desiredScale int32)
+}
+
+// KPAScaler knows how to scale the target of a KPA.
+type KPAScaler interface {
+	// Scale attempts to scale the given KPA's target to the desired scale.
+	Scale(kpa *kpav1alpha1.PodAutoscaler, desiredScale int32)
 }
 
 // scalerRunner wraps a UniScaler and a channel for implementing shutdown behavior.
@@ -62,21 +69,21 @@ type scalerRunner struct {
 	stopCh chan struct{}
 }
 
-type revisionKey string
+type key string
 
-func newRevisionKey(namespace string, name string) revisionKey {
-	return revisionKey(fmt.Sprintf("%s/%s", namespace, name))
+func newKey(namespace string, name string) key {
+	return key(fmt.Sprintf("%s/%s", namespace, name))
 }
 
-// MultiScaler maintains a collection of UniScalers indexed by revisionKey.
+// MultiScaler maintains a collection of UniScalers indexed by key.
 type MultiScaler struct {
-	scalers       map[revisionKey]*scalerRunner
+	scalers       map[key]*scalerRunner
 	scalersMutex  sync.RWMutex
 	scalersStopCh <-chan struct{}
 
 	config *Config
 
-	revisionScaler RevisionScaler
+	kpaScaler KPAScaler
 
 	uniScalerFactory UniScalerFactory
 
@@ -84,55 +91,55 @@ type MultiScaler struct {
 }
 
 // NewMultiScaler constructs a MultiScaler.
-func NewMultiScaler(config *Config, revisionScaler RevisionScaler, stopCh <-chan struct{}, uniScalerFactory UniScalerFactory, logger *zap.SugaredLogger) *MultiScaler {
+func NewMultiScaler(config *Config, kpaScaler KPAScaler, stopCh <-chan struct{}, uniScalerFactory UniScalerFactory, logger *zap.SugaredLogger) *MultiScaler {
 	logger.Debugf("Creating MultiScalar with configuration %#v", config)
 	return &MultiScaler{
-		scalers:          make(map[revisionKey]*scalerRunner),
+		scalers:          make(map[key]*scalerRunner),
 		scalersStopCh:    stopCh,
 		config:           config,
-		revisionScaler:   revisionScaler,
+		kpaScaler:        kpaScaler,
 		uniScalerFactory: uniScalerFactory,
 		logger:           logger,
 	}
 }
 
-// OnPresent adds, if necessary, a scaler for the given revision.
-func (m *MultiScaler) OnPresent(rev *v1alpha1.Revision, logger *zap.SugaredLogger) {
+// OnPresent adds, if necessary, a scaler for the given KPA.
+func (m *MultiScaler) OnPresent(kpa *kpav1alpha1.PodAutoscaler, logger *zap.SugaredLogger) {
 	m.scalersMutex.Lock()
 	defer m.scalersMutex.Unlock()
-	key := newRevisionKey(rev.Namespace, rev.Name)
+	key := newKey(kpa.Namespace, kpa.Name)
 	if _, exists := m.scalers[key]; !exists {
 		ctx := logging.WithLogger(context.TODO(), logger)
-		logger.Debug("Creating scaler for revision.")
-		scaler, err := m.createScaler(ctx, rev)
+		logger.Debug("Creating scaler for KPA.")
+		scaler, err := m.createScaler(ctx, kpa)
 		if err != nil {
-			logger.Errorf("Failed to create scaler for revision %#v: %v", rev, err)
+			logger.Errorf("Failed to create scaler for KPA %#v: %v", kpa, err)
 			return
 		}
-		logger.Info("Created scaler for revision.")
+		logger.Info("Created scaler for KPA.")
 		m.scalers[key] = scaler
 	}
 }
 
-// OnAbsent removes, if necessary, a scaler for the revision in the given namespace and with the given name.
+// OnAbsent removes, if necessary, a scaler for the KPA in the given namespace and with the given name.
 func (m *MultiScaler) OnAbsent(namespace string, name string, logger *zap.SugaredLogger) {
 	m.scalersMutex.Lock()
 	defer m.scalersMutex.Unlock()
-	key := newRevisionKey(namespace, name)
+	key := newKey(namespace, name)
 	if scaler, exists := m.scalers[key]; exists {
 		close(scaler.stopCh)
 		delete(m.scalers, key)
-		logger.Info("Deleted scaler for revision.")
+		logger.Info("Deleted scaler for KPA.")
 	}
 }
 
-// loggerWithRevisionInfo enriches the logs with revision name and namespace.
-func loggerWithRevisionInfo(logger *zap.SugaredLogger, ns string, name string) *zap.SugaredLogger {
-	return logger.With(zap.String(commonlogkey.Namespace, ns), zap.String(logkey.Revision, name))
+// loggerWithInfo enriches the logs with the KPA's name and namespace.
+func loggerWithInfo(logger *zap.SugaredLogger, ns string, name string) *zap.SugaredLogger {
+	return logger.With(zap.String(commonlogkey.Namespace, ns), zap.String(logkey.KPA, name))
 }
 
-func (m *MultiScaler) createScaler(ctx context.Context, rev *v1alpha1.Revision) (*scalerRunner, error) {
-	scaler, err := m.uniScalerFactory(rev, m.config)
+func (m *MultiScaler) createScaler(ctx context.Context, kpa *kpav1alpha1.PodAutoscaler) (*scalerRunner, error) {
+	scaler, err := m.uniScalerFactory(kpa, m.config)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +176,7 @@ func (m *MultiScaler) createScaler(ctx context.Context, rev *v1alpha1.Revision) 
 			case <-stopCh:
 				return
 			case desiredScale := <-scaleChan:
-				m.revisionScaler.Scale(rev, mostRecentDesiredScale(desiredScale, scaleChan, logger))
+				m.kpaScaler.Scale(kpa, mostRecentDesiredScale(desiredScale, scaleChan, logger))
 			}
 		}
 	}()
@@ -210,20 +217,20 @@ func (m *MultiScaler) tickScaler(ctx context.Context, scaler UniScaler, scaleCha
 	}
 }
 
-// RecordStat records some statistics for the given revision. revKey should have the
+// RecordStat records some statistics for the given KPA. kpaKey should have the
 // form namespace/name.
-func (m *MultiScaler) RecordStat(revKey string, stat Stat) {
+func (m *MultiScaler) RecordStat(kpaKey string, stat Stat) {
 	m.scalersMutex.RLock()
 	defer m.scalersMutex.RUnlock()
 
-	scaler, exists := m.scalers[revisionKey(revKey)]
+	scaler, exists := m.scalers[key(kpaKey)]
 	if exists {
-		namespace, name, err := cache.SplitMetaNamespaceKey(revKey)
+		namespace, name, err := cache.SplitMetaNamespaceKey(kpaKey)
 		if err != nil {
-			m.logger.Errorf("Invalid revision key %s", revKey)
+			m.logger.Errorf("Invalid KPA key %s", kpaKey)
 			return
 		}
-		logger := loggerWithRevisionInfo(m.logger, namespace, name)
+		logger := loggerWithInfo(m.logger, namespace, name)
 		ctx := logging.WithLogger(context.TODO(), logger)
 		scaler.scaler.Record(ctx, stat)
 	}

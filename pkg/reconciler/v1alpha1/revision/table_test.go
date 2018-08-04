@@ -1567,6 +1567,7 @@ func TestReconcile(t *testing.T) {
 		return &Reconciler{
 			Base:                reconciler.NewBase(opt, controllerAgentName),
 			revisionLister:      listers.GetRevisionLister(),
+			kpaLister:           listers.GetPodAutoscalerLister(),
 			buildLister:         listers.GetBuildLister(),
 			deploymentLister:    listers.GetDeploymentLister(),
 			serviceLister:       listers.GetK8sServiceLister(),

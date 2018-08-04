@@ -25,8 +25,10 @@ import (
 
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
+	kpav1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	istiov1alpha3 "github.com/knative/serving/pkg/apis/istio/v1alpha3"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	kpalisters "github.com/knative/serving/pkg/client/listers/autoscaling/v1alpha1"
 	istiolisters "github.com/knative/serving/pkg/client/listers/istio/v1alpha3"
 	listers "github.com/knative/serving/pkg/client/listers/serving/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -219,6 +221,54 @@ func (r *nsRevisionLister) List(selector labels.Selector) (results []*v1alpha1.R
 }
 
 func (r *nsRevisionLister) Get(name string) (*v1alpha1.Revision, error) {
+	for _, s := range r.r.Items {
+		if s.Name == name && r.ns == s.Namespace {
+			return s, nil
+		}
+	}
+	return nil, errors.NewNotFound(schema.GroupResource{}, name)
+}
+
+// PodAutoscalerLister is a lister.PodAutoscalerLister fake for testing.
+type PodAutoscalerLister struct {
+	Err   error
+	Items []*kpav1alpha1.PodAutoscaler
+}
+
+// Assert that our fake implements the interface it is faking.
+var _ kpalisters.PodAutoscalerLister = (*PodAutoscalerLister)(nil)
+
+func (r *PodAutoscalerLister) List(selector labels.Selector) (results []*kpav1alpha1.PodAutoscaler, err error) {
+	for _, elt := range r.Items {
+		if selector.Matches(labels.Set(elt.Labels)) {
+			results = append(results, elt)
+		}
+	}
+	return results, r.Err
+}
+
+func (r *PodAutoscalerLister) PodAutoscalers(namespace string) kpalisters.PodAutoscalerNamespaceLister {
+	return &nsPodAutoscalerLister{r: r, ns: namespace}
+}
+
+type nsPodAutoscalerLister struct {
+	r  *PodAutoscalerLister
+	ns string
+}
+
+// Assert that our fake implements the interface it is faking.
+var _ kpalisters.PodAutoscalerNamespaceLister = (*nsPodAutoscalerLister)(nil)
+
+func (r *nsPodAutoscalerLister) List(selector labels.Selector) (results []*kpav1alpha1.PodAutoscaler, err error) {
+	for _, elt := range r.r.Items {
+		if elt.Namespace == r.ns && selector.Matches(labels.Set(elt.Labels)) {
+			results = append(results, elt)
+		}
+	}
+	return results, r.r.Err
+}
+
+func (r *nsPodAutoscalerLister) Get(name string) (*kpav1alpha1.PodAutoscaler, error) {
 	for _, s := range r.r.Items {
 		if s.Name == name && r.ns == s.Namespace {
 			return s, nil

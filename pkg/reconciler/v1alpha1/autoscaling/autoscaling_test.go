@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	kpav1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	fakeKna "github.com/knative/serving/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/serving/pkg/client/informers/externalversions"
@@ -104,7 +105,7 @@ type testRevisionSynchronizer struct {
 	stopCh                 chan struct{}
 }
 
-func (revSynch *testRevisionSynchronizer) OnPresent(rev *v1alpha1.Revision, logger *zap.SugaredLogger) {
+func (revSynch *testRevisionSynchronizer) OnPresent(_ *kpav1alpha1.PodAutoscaler, logger *zap.SugaredLogger) {
 	revSynch.onPresentCallCount.Add(1)
 	close(revSynch.createdCh)
 }

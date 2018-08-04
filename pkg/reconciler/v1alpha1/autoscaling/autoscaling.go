@@ -23,9 +23,9 @@ import (
 
 	"github.com/knative/pkg/controller"
 	commonlogkey "github.com/knative/pkg/logging/logkey"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
-	servinginformers "github.com/knative/serving/pkg/client/informers/externalversions/serving/v1alpha1"
-	listers "github.com/knative/serving/pkg/client/listers/serving/v1alpha1"
+	kpav1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
+	informers "github.com/knative/serving/pkg/client/informers/externalversions/autoscaling/v1alpha1"
+	listers "github.com/knative/serving/pkg/client/listers/autoscaling/v1alpha1"
 	"github.com/knative/serving/pkg/logging/logkey"
 	"github.com/knative/serving/pkg/reconciler"
 	"go.uber.org/zap"
@@ -38,21 +38,21 @@ const (
 	controllerAgentName = "autoscaling-controller"
 )
 
-// RevisionSynchronizer is an interface for notifying the presence or absence of revisions.
-type RevisionSynchronizer interface {
-	// OnPresent is called when the given revision exists.
-	OnPresent(rev *v1alpha1.Revision, logger *zap.SugaredLogger)
+// KPASynchronizer is an interface for notifying the presence or absence of KPAs.
+type KPASynchronizer interface {
+	// OnPresent is called when the given KPA exists.
+	OnPresent(rev *kpav1alpha1.PodAutoscaler, logger *zap.SugaredLogger)
 
-	// OnAbsent is called when a revision in the given namespace with the given name ceases to exist.
+	// OnAbsent is called when a KPA in the given namespace with the given name ceases to exist.
 	OnAbsent(namespace string, name string, logger *zap.SugaredLogger)
 }
 
-// Reconciler tracks revisions and notifies a RevisionSynchronizer of their presence and absence.
+// Reconciler tracks KPAs and notifies a KPASynchronizer of their presence and absence.
 type Reconciler struct {
 	*reconciler.Base
 
-	revisionLister listers.RevisionLister
-	revSynch       RevisionSynchronizer
+	kpaLister listers.PodAutoscalerLister
+	kpaSynch  KPASynchronizer
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -61,20 +61,20 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // NewController creates an autoscaling Controller.
 func NewController(
 	opts *reconciler.Options,
-	revisionInformer servinginformers.RevisionInformer,
-	revSynch RevisionSynchronizer,
+	kpaInformer informers.PodAutoscalerInformer,
+	kpaSynch KPASynchronizer,
 	informerResyncInterval time.Duration,
 ) *controller.Impl {
 
 	c := &Reconciler{
-		Base:           reconciler.NewBase(*opts, controllerAgentName),
-		revisionLister: revisionInformer.Lister(),
-		revSynch:       revSynch,
+		Base:      reconciler.NewBase(*opts, controllerAgentName),
+		kpaLister: kpaInformer.Lister(),
+		kpaSynch:  kpaSynch,
 	}
 	impl := controller.NewImpl(c, c.Logger, "Autoscaling")
 
 	c.Logger.Info("Setting up event handlers")
-	revisionInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	kpaInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 		DeleteFunc: impl.Enqueue,
@@ -83,34 +83,36 @@ func NewController(
 	return impl
 }
 
-// Reconcile notifies the RevisionSynchronizer of the presence or absence.
-func (c *Reconciler) Reconcile(ctx context.Context, revKey string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(revKey)
+// Reconcile notifies the KPASynchronizer of the presence or absence.
+func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key %s: %v", revKey, err))
+		runtime.HandleError(fmt.Errorf("invalid resource key %s: %v", key, err))
 		return nil
 	}
 
-	logger := loggerWithRevisionInfo(c.Logger, namespace, name)
-	logger.Debug("Reconcile Revision")
+	logger := loggerWithKPAInfo(c.Logger, namespace, name)
+	logger.Debug("Reconcile KPA")
 
-	rev, err := c.revisionLister.Revisions(namespace).Get(name)
+	kpa, err := c.kpaLister.PodAutoscalers(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Debug("Revision no longer exists")
-			c.revSynch.OnAbsent(namespace, name, logger)
+			logger.Debug("KPA no longer exists")
+			c.kpaSynch.OnAbsent(namespace, name, logger)
 			return nil
 		}
 		runtime.HandleError(err)
 		return err
 	}
 
-	logger.Debug("Revision exists")
-	c.revSynch.OnPresent(rev.DeepCopy(), logger)
+	logger.Debug("KPA exists")
+	c.kpaSynch.OnPresent(kpa, logger)
+
+	// TODO(mattmoor): Update the KPA Status.
 
 	return nil
 }
 
-func loggerWithRevisionInfo(logger *zap.SugaredLogger, ns string, name string) *zap.SugaredLogger {
-	return logger.With(zap.String(commonlogkey.Namespace, ns), zap.String(logkey.Revision, name))
+func loggerWithKPAInfo(logger *zap.SugaredLogger, ns string, name string) *zap.SugaredLogger {
+	return logger.With(zap.String(commonlogkey.Namespace, ns), zap.String(logkey.KPA, name))
 }

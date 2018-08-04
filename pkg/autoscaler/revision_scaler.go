@@ -44,7 +44,7 @@ func NewRevisionScaler(servingClientSet clientset.Interface, scaleClientSet scal
 
 // Scale attempts to scale the given revision to the desired scale.
 func (rs *revisionScaler) Scale(oldRev *v1alpha1.Revision, desiredScale int32) {
-	logger := loggerWithRevisionInfo(rs.logger, oldRev.Namespace, oldRev.Name)
+	logger := loggerWithInfo(rs.logger, oldRev.Namespace, oldRev.Name)
 
 	// Do not scale an inactive revision.
 	// FIXME: given the input oldRev is stale, it might be better to pass in the revision's name and namespace instead.
