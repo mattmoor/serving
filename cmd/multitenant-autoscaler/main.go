@@ -36,7 +36,12 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery/cached"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -79,12 +84,22 @@ func main() {
 		logger.Fatal("Error building kubernetes clientset.", zap.Error(err))
 	}
 
+	rm := restmapper.NewDeferredDiscoveryRESTMapper(cached.NewMemCacheClient(kubeClientSet.Discovery()))
+	go wait.Until(func() {
+		rm.Reset()
+	}, 30*time.Second, stopCh)
+	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(kubeClientSet.Discovery())
+	scaleClient, err := scale.NewForConfig(cfg, rm, dynamic.LegacyAPIPathResolverFunc, scaleKindResolver)
+	if err != nil {
+		logger.Fatal("Error building kubernetes clientset.", zap.Error(err))
+	}
+
 	servingClientSet, err := clientset.NewForConfig(cfg)
 	if err != nil {
 		logger.Fatal("Error building serving clientset.", zap.Error(err))
 	}
 
-	revisionScaler := autoscaler.NewRevisionScaler(servingClientSet, kubeClientSet, logger)
+	revisionScaler := autoscaler.NewRevisionScaler(servingClientSet, scaleClient, logger)
 
 	rawConfig, err := configmap.Load("/etc/config-autoscaler")
 	if err != nil {
