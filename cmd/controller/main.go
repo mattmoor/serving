@@ -112,7 +112,7 @@ func main() {
 		logger.Fatalf("Error building caching clientset: %v", err)
 	}
 
-	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
+	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace())
 
 	opt := reconciler.Options{
 		KubeClientSet:    kubeClient,

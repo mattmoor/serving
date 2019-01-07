@@ -302,7 +302,7 @@ func main() {
 	}()
 
 	// Open a websocket connection to the autoscaler
-	autoscalerEndpoint := fmt.Sprintf("ws://%s.%s:%d", servingAutoscaler, system.Namespace, servingAutoscalerPort)
+	autoscalerEndpoint := fmt.Sprintf("ws://%s.%s:%d", servingAutoscaler, system.Namespace(), servingAutoscalerPort)
 	logger.Infof("Connecting to autoscaler at %s", autoscalerEndpoint)
 	statSink = websocket.NewDurableSendingConnection(autoscalerEndpoint)
 	go statReporter()
