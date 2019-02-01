@@ -69,11 +69,9 @@ func TestMakePodSpec(t *testing.T) {
 				TimeoutSeconds:       45,
 				Container: corev1.Container{
 					Image: "busybox",
-					Ports: []corev1.ContainerPort{
-						{
-							ContainerPort: 8888,
-						},
-					},
+					Ports: []corev1.ContainerPort{{
+						ContainerPort: 8888,
+					}},
 				},
 			},
 		},
@@ -86,12 +84,10 @@ func TestMakePodSpec(t *testing.T) {
 				Name:      UserContainerName,
 				Image:     "busybox",
 				Resources: userResources,
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          v1alpha1.UserPortName,
-						ContainerPort: 8888,
-					},
-				},
+				Ports: []corev1.ContainerPort{{
+					Name:          v1alpha1.UserPortName,
+					ContainerPort: 8888,
+				}},
 				VolumeMounts:             []corev1.VolumeMount{varLogVolumeMount},
 				Lifecycle:                userLifecycle,
 				TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
@@ -155,6 +151,126 @@ func TestMakePodSpec(t *testing.T) {
 				}},
 			}},
 			Volumes:                       []corev1.Volume{varLogVolume},
+			TerminationGracePeriodSeconds: refInt64(45),
+		},
+	}, {
+		name: "volumes passed through",
+		rev: &v1alpha1.Revision{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "bar",
+				UID:       "1234",
+				Labels:    labels,
+			},
+			Spec: v1alpha1.RevisionSpec{
+				ContainerConcurrency: 1,
+				TimeoutSeconds:       45,
+				Container: corev1.Container{
+					Image: "busybox",
+					Ports: []corev1.ContainerPort{{
+						ContainerPort: 8888,
+					}},
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "asdf",
+						MountPath: "/asdf",
+					}},
+				},
+				Volumes: []corev1.Volume{{
+					Name: "asdf",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "asdf",
+						},
+					},
+				}},
+			},
+		},
+		lc: &logging.Config{},
+		oc: &config.Observability{},
+		ac: &autoscaler.Config{},
+		cc: &config.Controller{},
+		want: &corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:      UserContainerName,
+				Image:     "busybox",
+				Resources: userResources,
+				Ports: []corev1.ContainerPort{{
+					Name:          v1alpha1.UserPortName,
+					ContainerPort: 8888,
+				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "asdf",
+					MountPath: "/asdf",
+				}, varLogVolumeMount},
+				Lifecycle:                userLifecycle,
+				TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+				Env: []corev1.EnvVar{{
+					Name:  "PORT",
+					Value: "8888", // match user port
+				}, {
+					Name:  "K_REVISION",
+					Value: "bar",
+				}, {
+					Name:  "K_CONFIGURATION",
+					Value: "cfg",
+				}, {
+					Name:  "K_SERVICE",
+					Value: "svc",
+				}},
+			}, {
+				Name:           QueueContainerName,
+				Resources:      queueResources,
+				Ports:          queuePorts,
+				Lifecycle:      queueLifecycle,
+				ReadinessProbe: queueReadinessProbe,
+				Env: []corev1.EnvVar{{
+					Name:  "SERVING_NAMESPACE",
+					Value: "foo", // matches namespace
+				}, {
+					Name: "SERVING_CONFIGURATION",
+					// No OwnerReference
+				}, {
+					Name:  "SERVING_REVISION",
+					Value: "bar", // matches name
+				}, {
+					Name:  "SERVING_AUTOSCALER",
+					Value: "autoscaler", // no autoscaler configured.
+				}, {
+					Name:  "SERVING_AUTOSCALER_PORT",
+					Value: "8080",
+				}, {
+					Name:  "CONTAINER_CONCURRENCY",
+					Value: "1",
+				}, {
+					Name:  "REVISION_TIMEOUT_SECONDS",
+					Value: "45",
+				}, {
+					Name: "SERVING_POD",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+					},
+				}, {
+					Name: "SERVING_LOGGING_CONFIG",
+					// No logging configuration
+				}, {
+					Name: "SERVING_LOGGING_LEVEL",
+					// No logging level
+				}, {
+					Name:  "USER_PORT",
+					Value: "8888", // Match user port
+				}, {
+					Name:  "SYSTEM_NAMESPACE",
+					Value: system.Namespace(),
+				}},
+			}},
+			Volumes: []corev1.Volume{varLogVolume, {
+				Name: "asdf",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "asdf",
+					},
+				},
+			}},
 			TerminationGracePeriodSeconds: refInt64(45),
 		},
 	}, {
