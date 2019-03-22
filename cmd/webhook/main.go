@@ -33,7 +33,9 @@ import (
 	kpa "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	net "github.com/knative/serving/pkg/apis/networking/v1alpha1"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/logging"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 )
@@ -80,6 +82,12 @@ func main() {
 		logger.Fatalf("Version check failed: %v", err)
 	}
 
+	apiExtClient, err := apiextensionsclient.NewForConfig(clusterConfig)
+	if err != nil {
+		logger.Fatalw("Failed to get the api-ext client set", zap.Error(err))
+	}
+	logger.Infof("Successfully got the apiExtClient: %+v", apiExtClient)
+
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace())
 	configMapWatcher.Watch(logging.ConfigMapName(), logging.UpdateLevelFromConfigMap(logger, atomicLevel, component))
@@ -96,8 +104,9 @@ func main() {
 		WebhookName:    "webhook.serving.knative.dev",
 	}
 	controller := webhook.AdmissionController{
-		Client:  kubeClient,
-		Options: options,
+		Client:       kubeClient,
+		APIExtClient: apiExtClient,
+		Options:      options,
 		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
 			v1alpha1.SchemeGroupVersion.WithKind("Revision"):      &v1alpha1.Revision{},
 			v1alpha1.SchemeGroupVersion.WithKind("Configuration"): &v1alpha1.Configuration{},
