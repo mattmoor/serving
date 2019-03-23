@@ -24,31 +24,36 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
+	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/apis/duck"
 	"github.com/knative/pkg/kmp"
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/logging/logkey"
-	perrors "github.com/pkg/errors"
-
 	"github.com/markbates/inflect"
 	"github.com/mattbaird/jsonpatch"
+	perrors "github.com/pkg/errors"
+	"go.uber.org/zap"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8sjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	clientadmissionregistrationv1beta1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1"
 )
@@ -116,10 +121,11 @@ type ResourceDefaulter func(patches *[]jsonpatch.JsonPatchOperation, crd Generic
 // AdmissionController implements the external admission webhook for validation of
 // pilot configuration.
 type AdmissionController struct {
-	Client   kubernetes.Interface
-	Options  ControllerOptions
-	Handlers map[schema.GroupVersionKind]GenericCRD
-	Logger   *zap.SugaredLogger
+	Client       kubernetes.Interface
+	APIExtClient apiextensionsclient.Interface
+	Options      ControllerOptions
+	Handlers     map[schema.GroupVersionKind]GenericCRD
+	Logger       *zap.SugaredLogger
 }
 
 // GenericCRD is the interface definition that allows us to perform the generic
@@ -424,7 +430,41 @@ func (ac *AdmissionController) register(
 	} else {
 		logger.Info("Created a webhook")
 	}
+	if ac.APIExtClient != nil {
+		ac.registerVersionConverter(ctx, caCert)
+	}
 	return nil
+}
+
+func (ac *AdmissionController) registerVersionConverter(
+	ctx context.Context,
+	caCert []byte) {
+	logger := logging.FromContext(ctx)
+	service, err := ac.APIExtClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get("services.serving.knative.dev", metav1.GetOptions{})
+	if err != nil {
+		logger.Errorw("Error getting service CRD", zap.Error(err))
+		return
+	}
+	logger.Debugw("Got CRD", zap.Any("CRD", service))
+
+	nService := service.DeepCopyObject().(*apiextensionsv1beta1.CustomResourceDefinition)
+	path := "/crdconvert"
+	nService.Spec.Conversion = &apiextensionsv1beta1.CustomResourceConversion{
+		Strategy: apiextensionsv1beta1.WebhookConverter,
+		WebhookClientConfig: &apiextensionsv1beta1.WebhookClientConfig{
+			Service: &apiextensionsv1beta1.ServiceReference{
+				Namespace: ac.Options.Namespace,
+				Name:      ac.Options.ServiceName,
+				Path:      &path,
+			},
+			CABundle: caCert,
+		},
+	}
+	logger.Debugw("Modified CRD", zap.Any("CRD", nService))
+	logger.Debugw("CRD Diff: ", zap.String("diff", cmp.Diff(service, nService)))
+	if _, err := ac.APIExtClient.ApiextensionsV1beta1().CustomResourceDefinitions().Update(nService); err != nil {
+		logger.Errorw("Error updating the CRD", zap.Error(err))
+	}
 }
 
 // ServeHTTP implements the external admission webhook for mutating
@@ -437,6 +477,11 @@ func (ac *AdmissionController) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		http.Error(w, "invalid Content-Type, want `application/json`", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	if r.URL.Path == "/crdconvert" {
+		ac.serveConversion(w, r)
 		return
 	}
 
@@ -612,4 +657,177 @@ func generateSecret(ctx context.Context, options *ControllerOptions) (*corev1.Se
 			secretCACert:     caCert,
 		},
 	}, nil
+}
+
+var (
+	scheme      = runtime.NewScheme()
+	serializers = map[string]runtime.Serializer{
+		"json": k8sjson.NewSerializer(k8sjson.DefaultMetaFactory, scheme, scheme, false),
+		"yaml": k8sjson.NewYAMLSerializer(k8sjson.DefaultMetaFactory, scheme, scheme),
+	}
+)
+
+func getInputSerializer(contentType string) runtime.Serializer {
+	parts := strings.SplitN(contentType, "/", 2)
+	if len(parts) != 2 {
+		return nil
+	}
+	// YAML or JSON.
+	return serializers[parts[1]]
+}
+
+func getOutputSerializer(accept string) runtime.Serializer {
+	if strings.Contains(accept, "yaml") {
+		return serializers["yaml"]
+	}
+	return serializers["json"]
+}
+
+// conversionResponseFailureWithMessagef is a helper function to create an AdmissionResponse
+// with a formatted embedded error message.
+func conversionResponseFailureWithMessagef(msg string, params ...interface{}) *apiextensionsv1beta1.ConversionResponse {
+	return &apiextensionsv1beta1.ConversionResponse{
+		Result: statusErrorWithMessage(msg, params...),
+	}
+}
+
+// doConversion converts the requested object given the conversion function and returns a conversion response.
+// failures will be reported as Reason in the conversion response.
+func (ac *AdmissionController) doConversion(convertRequest *apiextensionsv1beta1.ConversionRequest) *apiextensionsv1beta1.ConversionResponse {
+	convertedObjects := make([]runtime.RawExtension, 0, len(convertRequest.Objects))
+	for _, obj := range convertRequest.Objects {
+		cr := &unstructured.Unstructured{}
+		if err := cr.UnmarshalJSON(obj.Raw); err != nil {
+			ac.Logger.Errorw("error unmarshalling JSON", zap.Error(err))
+			return conversionResponseFailureWithMessagef("failed to unmarshall object (%v): %v", string(obj.Raw), err)
+		}
+		gv, err := schema.ParseGroupVersion(convertRequest.DesiredAPIVersion)
+		if err != nil {
+			ac.Logger.Errorw("error parsing target version", zap.Error(err))
+			return conversionResponseFailureWithMessagef("failed to parse target version (%v): %v", string(obj.Raw), err)
+		}
+		convertedCR, err := ac.convert(cr, gv)
+		if err != nil {
+			ac.Logger.Errorw("error converting object", zap.Error(err))
+			return &apiextensionsv1beta1.ConversionResponse{
+				Result: metav1.Status{
+					Status:  metav1.StatusFailure,
+					Message: err.Error(),
+				},
+			}
+		}
+		convertedObjects = append(convertedObjects, runtime.RawExtension{Object: convertedCR})
+	}
+	return &apiextensionsv1beta1.ConversionResponse{
+		ConvertedObjects: convertedObjects,
+		Result:           statusSucceed(),
+	}
+}
+
+func statusErrorWithMessage(msg string, params ...interface{}) metav1.Status {
+	return metav1.Status{
+		Message: fmt.Sprintf(msg, params...),
+		Status:  metav1.StatusFailure,
+	}
+}
+
+func statusSucceed() metav1.Status {
+	return metav1.Status{
+		Status: metav1.StatusSuccess,
+	}
+}
+
+func (ac *AdmissionController) convert(o *unstructured.Unstructured, toVersion schema.GroupVersion) (runtime.Object, error) {
+	fromGVK := o.GroupVersionKind()
+
+	ac.Logger.Infof("converting %s from %s to %s.", fromGVK.Kind, fromGVK, toVersion)
+	if toVersion.Version == fromGVK.Version {
+		return nil, fmt.Errorf(
+			"conversion for %s from a version to itself should not call the webhook: %s",
+			fromGVK.Kind, toVersion)
+	}
+	toGVK := toVersion.WithKind(fromGVK.Kind)
+
+	src, ok := ac.Handlers[fromGVK]
+	if !ok {
+		return nil, fmt.Errorf("unsupported GVK: %+v", fromGVK)
+	}
+	src = src.DeepCopyObject().(GenericCRD)
+
+	sink, ok := ac.Handlers[toGVK]
+	if !ok {
+		return nil, fmt.Errorf("unsupported GVK: %+v", toGVK)
+	}
+	sink = sink.DeepCopyObject().(GenericCRD)
+
+	// TODO(mattmoor): Eventually this should just be part of GenericCRD
+	srcV, ok := src.(apis.Versionable)
+	if !ok {
+		return nil, fmt.Errorf("type %+v is not versionable", fromGVK)
+	}
+	sinkV, ok := sink.(apis.Versionable)
+	if !ok {
+		return nil, fmt.Errorf("type %+v is not versionable", toGVK)
+	}
+
+	if err := duck.FromUnstructured(o, srcV); err != nil {
+		return nil, err
+	}
+
+	if version.CompareKubeAwareVersionStrings(toGVK.Version, fromGVK.Version) > 0 {
+		if err := sinkV.UpFrom(srcV); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := srcV.DownTo(sinkV); err != nil {
+			return nil, err
+		}
+	}
+	return sink, nil
+}
+
+func (ac *AdmissionController) serveConversion(w http.ResponseWriter, r *http.Request) {
+	var body []byte
+	if r.Body != nil {
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "error reading the conversion request", http.StatusInternalServerError)
+			return
+		}
+		body = data
+	}
+
+	contentType := r.Header.Get("Content-Type")
+	serializer := getInputSerializer(contentType)
+	if serializer == nil {
+		msg := fmt.Sprintf("invalid Content-Type header %q", contentType)
+		ac.Logger.Error(msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	convertReview := &apiextensionsv1beta1.ConversionReview{}
+	if _, _, err := serializer.Decode(body, nil, convertReview); err != nil {
+		ac.Logger.Errorw("error decoding conversion srequest", zap.Error(err))
+		convertReview.Response = conversionResponseFailureWithMessagef("failed to deserialize body (%v): %v", string(body), err)
+	} else {
+		convertReview.Response = ac.doConversion(convertReview.Request)
+		convertReview.Response.UID = convertReview.Request.UID
+	}
+
+	// Reset the request, it is not needed in a response.
+	convertReview.Request = &apiextensionsv1beta1.ConversionRequest{}
+
+	accept := r.Header.Get("Accept")
+	outSerializer := getOutputSerializer(accept)
+	if outSerializer == nil {
+		msg := fmt.Sprintf("invalid accept header %q", accept)
+		ac.Logger.Error(msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+	if err := outSerializer.Encode(convertReview, w); err != nil {
+		ac.Logger.Error("error encoding conversion response", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

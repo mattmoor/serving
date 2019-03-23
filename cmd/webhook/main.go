@@ -112,10 +112,16 @@ func main() {
 			v1alpha1.SchemeGroupVersion.WithKind("Configuration"): &v1alpha1.Configuration{},
 			v1alpha1.SchemeGroupVersion.WithKind("Route"):         &v1alpha1.Route{},
 			v1alpha1.SchemeGroupVersion.WithKind("Service"):       &v1alpha1.Service{},
-			kpa.SchemeGroupVersion.WithKind("PodAutoscaler"):      &kpa.PodAutoscaler{},
-			net.SchemeGroupVersion.WithKind("Certificate"):        &net.Certificate{},
-			net.SchemeGroupVersion.WithKind("ClusterIngress"):     &net.ClusterIngress{},
-			net.SchemeGroupVersion.WithKind("ServerlessService"):  &net.ServerlessService{},
+
+			v1beta1.SchemeGroupVersion.WithKind("Revision"):      &v1beta1.Revision{},
+			v1beta1.SchemeGroupVersion.WithKind("Configuration"): &v1beta1.Configuration{},
+			v1beta1.SchemeGroupVersion.WithKind("Route"):         &v1beta1.Route{},
+			v1beta1.SchemeGroupVersion.WithKind("Service"):       &v1beta1.Service{},
+
+			kpa.SchemeGroupVersion.WithKind("PodAutoscaler"):     &kpa.PodAutoscaler{},
+			net.SchemeGroupVersion.WithKind("Certificate"):       &net.Certificate{},
+			net.SchemeGroupVersion.WithKind("ClusterIngress"):    &net.ClusterIngress{},
+			net.SchemeGroupVersion.WithKind("ServerlessService"): &net.ServerlessService{},
 		},
 		Logger: logger,
 	}

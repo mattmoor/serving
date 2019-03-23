@@ -55,3 +55,15 @@ type Listable interface {
 type Annotatable interface {
 	AnnotateUserInfo(ctx context.Context, previous Annotatable, ui *authenticationv1.UserInfo)
 }
+
+// Versionable handles conversions to/from types of a lower version.
+// The receiver is always the higher version, and the argument is always the lower version.
+// Depending on the direction of the conversion (upgrade or downgrade) the receiver may be
+// the source or the sink of the transformation.
+type Versionable interface {
+	// UpFrom converts from the provided Versionable into the receiver.
+	UpFrom(from Versionable) error
+
+	// DownTo converts the receiver to the provided Versionable.
+	DownTo(to Versionable) error
+}
