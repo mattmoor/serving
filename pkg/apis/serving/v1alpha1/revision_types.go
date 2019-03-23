@@ -22,6 +22,8 @@ import (
 	"github.com/knative/pkg/kmeta"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 // +genclient
@@ -247,4 +249,23 @@ type RevisionList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Revision `json:"items"`
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *RevisionTemplateSpec) UpTo(target *v1beta1.RevisionTemplateSpec) error {
+	target.ObjectMeta = src.ObjectMeta
+	return src.Spec.UpTo(&target.Spec)
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *RevisionSpec) UpTo(target *v1beta1.RevisionSpec) error {
+	// TODO(mattmoor): Check for and error on BuildRef.
+	target.ContainerConcurrency = v1beta1.RevisionContainerConcurrencyType(src.ContainerConcurrency)
+	target.TimeoutSeconds = src.TimeoutSeconds
+	target.PodSpec = corev1.PodSpec{
+		ServiceAccountName: src.ServiceAccountName,
+		Volumes:            src.Volumes,
+		Containers:         []corev1.Container{src.Container},
+	}
+	return nil
 }

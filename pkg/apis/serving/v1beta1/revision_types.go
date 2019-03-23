@@ -17,11 +17,14 @@ limitations under the License.
 package v1beta1
 
 import (
-	// "github.com/knative/pkg/apis"
+	"context"
+
+	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	// "github.com/knative/pkg/kmeta"
+	"github.com/knative/pkg/kmeta"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // +genclient
@@ -45,16 +48,15 @@ type Revision struct {
 }
 
 // Verify that Revision adheres to the appropriate interfaces.
-// TODO(mattmoor): DO NOT SUBMIT
-// var (
-// 	// Check that Revision can be validated, can be defaulted, and has immutable fields.
-// 	_ apis.Validatable = (*Revision)(nil)
-// 	_ apis.Defaultable = (*Revision)(nil)
-//      _ apis.Immutable = (*Revision)(nil)
+var (
+	// Check that Revision can be validated, can be defaulted, and has immutable fields.
+	_ apis.Validatable = (*Revision)(nil)
+	_ apis.Defaultable = (*Revision)(nil)
+	_ apis.Immutable   = (*Revision)(nil)
 
-// 	// Check that we can create OwnerReferences to a Revision.
-// 	_ kmeta.OwnerRefable = (*Revision)(nil)
-// )
+	// Check that we can create OwnerReferences to a Revision.
+	_ kmeta.OwnerRefable = (*Revision)(nil)
+)
 
 // RevisionTemplateSpec describes the data a revision should have when created from a template.
 // Based on: https://github.com/kubernetes/api/blob/e771f807/core/v1/types.go#L3179-L3190
@@ -144,4 +146,19 @@ type RevisionList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Revision `json:"items"`
+}
+
+func (r *Revision) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("Revision")
+}
+
+func (c *Revision) Validate(ctx context.Context) *apis.FieldError {
+	return nil
+}
+
+func (current *Revision) CheckImmutableFields(ctx context.Context, og apis.Immutable) *apis.FieldError {
+	return nil
+}
+
+func (c *Revision) SetDefaults(ctx context.Context) {
 }

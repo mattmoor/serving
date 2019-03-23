@@ -17,11 +17,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"context"
 
-	// "github.com/knative/pkg/apis"
+	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	// "github.com/knative/pkg/kmeta"
+	"github.com/knative/pkg/kmeta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // +genclient
@@ -48,15 +50,14 @@ type Route struct {
 }
 
 // Verify that Route adheres to the appropriate interfaces.
-// TODO(mattmoor): DO NOT SUBMIT
-// var (
-// 	// Check that Route may be validated and defaulted.
-// 	_ apis.Validatable = (*Route)(nil)
-// 	_ apis.Defaultable = (*Route)(nil)
+var (
+	// Check that Route may be validated and defaulted.
+	_ apis.Validatable = (*Route)(nil)
+	_ apis.Defaultable = (*Route)(nil)
 
-// 	// Check that we can create OwnerReferences to a Route.
-// 	_ kmeta.OwnerRefable = (*Route)(nil)
-// )
+	// Check that we can create OwnerReferences to a Route.
+	_ kmeta.OwnerRefable = (*Route)(nil)
+)
 
 // DefaultRevisionName is a shortcut for usage in the `release` mode
 // to refer to the latest created revision.
@@ -149,4 +150,15 @@ type RouteList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Route `json:"items"`
+}
+
+func (r *Route) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("Route")
+}
+
+func (c *Route) Validate(ctx context.Context) *apis.FieldError {
+	return nil
+}
+
+func (c *Route) SetDefaults(ctx context.Context) {
 }

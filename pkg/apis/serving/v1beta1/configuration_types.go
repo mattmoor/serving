@@ -17,10 +17,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	// "github.com/knative/pkg/apis"
+	"context"
+
+	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	// "github.com/knative/pkg/kmeta"
+	"github.com/knative/pkg/kmeta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // +genclient
@@ -45,15 +48,14 @@ type Configuration struct {
 }
 
 // Verify that Configuration adheres to the appropriate interfaces.
-// TODO(mattmoor): DO NOT SUBMIT
-// var (
-// 	// Check that Configuration may be validated and defaulted.
-// 	_ apis.Validatable = (*Configuration)(nil)
-// 	_ apis.Defaultable = (*Configuration)(nil)
+var (
+	// Check that Configuration may be validated and defaulted.
+	_ apis.Validatable = (*Configuration)(nil)
+	_ apis.Defaultable = (*Configuration)(nil)
 
-// 	// Check that we can create OwnerReferences to a Configuration.
-// 	_ kmeta.OwnerRefable = (*Configuration)(nil)
-// )
+	// Check that we can create OwnerReferences to a Configuration.
+	_ kmeta.OwnerRefable = (*Configuration)(nil)
+)
 
 // ConfigurationSpec holds the desired state of the Configuration (from the client).
 type ConfigurationSpec struct {
@@ -105,4 +107,15 @@ type ConfigurationList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Configuration `json:"items"`
+}
+
+func (r *Configuration) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("Configuration")
+}
+
+func (c *Configuration) Validate(ctx context.Context) *apis.FieldError {
+	return nil
+}
+
+func (c *Configuration) SetDefaults(ctx context.Context) {
 }

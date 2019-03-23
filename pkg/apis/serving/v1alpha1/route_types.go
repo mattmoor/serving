@@ -22,6 +22,8 @@ import (
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/kmeta"
+
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 // +genclient
@@ -159,4 +161,20 @@ type RouteList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Route `json:"items"`
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *RouteStatusFields) UpTo(target *v1beta1.RouteStatusFields) error {
+	target.Domain = src.Domain
+	target.Address = src.Address
+	for _, t := range src.Traffic {
+		target.Traffic = append(target.Traffic, v1beta1.TrafficTarget{
+			Name:              t.Name,
+			RevisionName:      t.RevisionName,
+			ConfigurationName: t.ConfigurationName,
+			Percent:           t.Percent,
+			// TODO(mattmoor): url
+		})
+	}
+	return nil
 }

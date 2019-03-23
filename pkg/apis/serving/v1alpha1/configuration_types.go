@@ -21,6 +21,8 @@ import (
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/kmeta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 // +genclient
@@ -118,4 +120,17 @@ type ConfigurationList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Configuration `json:"items"`
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *ConfigurationSpec) UpTo(target *v1beta1.ConfigurationSpec) error {
+	// TODO(mattmoor): Check for Build
+	return src.RevisionTemplate.UpTo(&target.Template)
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *ConfigurationStatusFields) UpTo(target *v1beta1.ConfigurationStatusFields) error {
+	target.LatestCreatedRevisionName = src.LatestCreatedRevisionName
+	target.LatestReadyRevisionName = src.LatestReadyRevisionName
+	return nil
 }

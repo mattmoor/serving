@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,17 +30,15 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/apis/duck"
 	"github.com/knative/pkg/kmp"
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/logging/logkey"
-	perrors "github.com/pkg/errors"
-
 	"github.com/markbates/inflect"
 	"github.com/mattbaird/jsonpatch"
+	perrors "github.com/pkg/errors"
+	"go.uber.org/zap"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -47,8 +46,12 @@ import (
 	v1beta1 "k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	clientadmissionregistrationv1beta1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1"
 )
@@ -57,6 +60,7 @@ const (
 	secretServerKey  = "server-key.pem"
 	secretServerCert = "server-cert.pem"
 	secretCACert     = "ca-cert.pem"
+	convertURLPath   = "/convert"
 )
 
 var (
@@ -116,10 +120,11 @@ type ResourceDefaulter func(patches *[]jsonpatch.JsonPatchOperation, crd Generic
 // AdmissionController implements the external admission webhook for validation of
 // pilot configuration.
 type AdmissionController struct {
-	Client   kubernetes.Interface
-	Options  ControllerOptions
-	Handlers map[schema.GroupVersionKind]GenericCRD
-	Logger   *zap.SugaredLogger
+	Client        kubernetes.Interface
+	DynamicClient dynamic.Interface
+	Options       ControllerOptions
+	Handlers      map[schema.GroupVersionKind]GenericCRD
+	Logger        *zap.SugaredLogger
 }
 
 // GenericCRD is the interface definition that allows us to perform the generic
@@ -424,7 +429,165 @@ func (ac *AdmissionController) register(
 	} else {
 		logger.Info("Created a webhook")
 	}
+	if ac.DynamicClient != nil {
+		ac.registerVersionConverter(ctx, caCert)
+	}
 	return nil
+}
+
+type family struct {
+	convertible    bool
+	versions       []string
+	storageVersion string
+}
+
+func (f *family) asVersionList() string {
+	type version struct {
+		Name    string `json:"name"`
+		Storage bool   `json:"storage"`
+		Served  bool   `json:"served"`
+	}
+	vers := make([]version, 0, len(f.versions))
+	for _, v := range f.versions {
+		vers = append(vers, version{
+			Name:    v,
+			Storage: v == f.storageVersion,
+			Served:  true,
+		})
+	}
+
+	b, _ := json.Marshal(vers)
+	return string(b)
+}
+
+func groupTypes(handlers map[schema.GroupVersionKind]GenericCRD) (map[schema.GroupKind]family, error) {
+	fams := make(map[schema.GroupKind]family)
+
+	isConvertible := func(gvk schema.GroupVersionKind) bool {
+		h := handlers[gvk]
+		_, ok := h.(apis.Convertible)
+		return ok
+	}
+
+	for gvk := range handlers {
+		fam, ok := fams[gvk.GroupKind()]
+		if !ok {
+			fam = family{convertible: isConvertible(gvk)}
+		} else if ver := isConvertible(gvk); fam.convertible != ver {
+			return nil, fmt.Errorf("Convertible mismatch %v is %v, but %v is %v",
+				gvk, ver, gvk.GroupKind().WithVersion(fam.versions[0]), fam.convertible)
+		}
+		fam.versions = append(fam.versions, gvk.Version)
+		fams[gvk.GroupKind()] = fam
+	}
+
+	for gk, f := range fams {
+		// This sorts things so that v1alpha1 comes before v1beta1 ... vN
+		sort.Slice(f.versions, func(i, j int) bool {
+			return version.CompareKubeAwareVersionStrings(f.versions[i], f.versions[j]) < 0
+		})
+
+		if !f.convertible {
+			// When a family of versions doesn't implement Convertible they are
+			// schema-equivalent and the storage version doesn't matter.  Pick the
+			// highest as the least likely to be removed.
+			f.storageVersion = f.versions[len(f.versions)-1]
+			fams[gk] = f
+			continue
+		}
+
+		var storageVersion string
+		for _, v := range f.versions {
+			c := handlers[gk.WithVersion(v)].(apis.Convertible)
+			if c.IsStorage() {
+				if storageVersion != "" {
+					return nil, fmt.Errorf("Multiple storage versions provided: %s and %s", v, storageVersion)
+				}
+				storageVersion = v
+			}
+		}
+		if storageVersion == "" {
+			return nil, fmt.Errorf("No storage version defined for %v", gk)
+		}
+		f.storageVersion = storageVersion
+		fams[gk] = f
+	}
+
+	return fams, nil
+}
+
+func (ac *AdmissionController) registerVersionConverter(ctx context.Context, caCert []byte) {
+	logger := logging.FromContext(ctx)
+
+	crdClient := ac.DynamicClient.Resource(schema.GroupVersionResource{
+		Group:    "apiextensions.k8s.io",
+		Version:  "v1beta1",
+		Resource: "customresourcedefinitions",
+	})
+
+	// Group the types we have been given into families by GroupVersion.
+	families, err := groupTypes(ac.Handlers)
+	if err != nil {
+		logger.Fatalf("Error classifying groups: %v", err)
+	}
+
+	// For each of the families of versions, appropriately configure
+	// the CRD's version list (optionally with webhook conversion).
+	for gk, fam := range families {
+		gr := schema.GroupResource{
+			Group:    gk.Group,
+			Resource: strings.ToLower(inflect.Pluralize(gk.Kind)),
+		}
+		name := gr.String()
+
+		var patch string
+		if !fam.convertible {
+			// The patch we synthesize when the family of versions is not
+			// "convertible" sets the strategy to None and incorporates the
+			// version list.
+			patch = fmt.Sprintf(`[{
+                    "op":"replace",
+                    "path":"/spec/conversion/strategy",
+                    "value":"None"
+                  }, {
+                    "op":"add",
+                    "path":"/spec/versions",
+                    "value": %s
+                  }]`, fam.asVersionList())
+		} else {
+			// The patch we synthesize when the family of versions is
+			// convertible sets the strategy to Webhook, incorporates the
+			// version list, and configures the service for this webhook
+			// as the recipient of versioning requests.
+			patch = fmt.Sprintf(`[{
+                    "op":"replace",
+                    "path":"/spec/conversion/strategy",
+                    "value":"Webhook"
+                  }, {
+                    "op":"add",
+                    "path":"/spec/conversion/webhookClientConfig",
+                    "value":{
+                       "caBundle":%q,
+                       "service":{
+                          "name":%q,
+                          "namespace":%q,
+                          "path":%q
+                        }
+                    }
+                  }, {
+                    "op":"add",
+                    "path":"/spec/versions",
+                    "value": %s
+                  }]`, base64.StdEncoding.EncodeToString(caCert), ac.Options.ServiceName,
+				ac.Options.Namespace, convertURLPath, fam.asVersionList())
+		}
+
+		if _, err := crdClient.Patch(
+			name, types.JSONPatchType, []byte(patch), metav1.UpdateOptions{}); err != nil {
+			logger.Errorw("Error updating the CRD", zap.Error(err))
+		}
+		logger.Infof("Patched %v! %s", gk, patch)
+	}
 }
 
 // ServeHTTP implements the external admission webhook for mutating
@@ -437,6 +600,11 @@ func (ac *AdmissionController) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		http.Error(w, "invalid Content-Type, want `application/json`", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	if r.URL.Path == convertURLPath {
+		ac.serveConversion(w, r)
 		return
 	}
 
@@ -612,4 +780,120 @@ func generateSecret(ctx context.Context, options *ControllerOptions) (*corev1.Se
 			secretCACert:     caCert,
 		},
 	}, nil
+}
+
+// doConversion converts the requested object given the conversion function and returns a conversion response.
+// failures will be reported as Reason in the conversion response.
+func (ac *AdmissionController) doConversion(convertRequest *conversionRequest) ([]runtime.Object, error) {
+	convertedObjects := make([]runtime.Object, 0, len(convertRequest.Objects))
+	for _, cr := range convertRequest.Objects {
+		gv, err := schema.ParseGroupVersion(convertRequest.DesiredAPIVersion)
+		if err != nil {
+			ac.Logger.Errorw("error parsing target version", zap.Error(err))
+			return nil, err
+		}
+		convertedCR, err := ac.convert(&cr, gv)
+		if err != nil {
+			ac.Logger.Errorw("error converting object", zap.Error(err))
+			return nil, err
+		}
+		convertedObjects = append(convertedObjects, convertedCR)
+	}
+	return convertedObjects, nil
+}
+
+func (ac *AdmissionController) convert(o *unstructured.Unstructured, toVersion schema.GroupVersion) (runtime.Object, error) {
+	fromGVK := o.GroupVersionKind()
+
+	ac.Logger.Infof("converting %s from %s to %s.", fromGVK.Kind, fromGVK, toVersion)
+	if toVersion.Version == fromGVK.Version {
+		return nil, fmt.Errorf(
+			"conversion for %s from a version to itself should not call the webhook: %s",
+			fromGVK.Kind, toVersion)
+	}
+	toGVK := toVersion.WithKind(fromGVK.Kind)
+
+	src, ok := ac.Handlers[fromGVK]
+	if !ok {
+		return nil, fmt.Errorf("unsupported GVK: %+v", fromGVK)
+	}
+	src = src.DeepCopyObject().(GenericCRD)
+
+	sink, ok := ac.Handlers[toGVK]
+	if !ok {
+		return nil, fmt.Errorf("unsupported GVK: %+v", toGVK)
+	}
+	sink = sink.DeepCopyObject().(GenericCRD)
+
+	// If we're here, we're convertible.
+	srcV := src.(apis.Convertible)
+	sinkV := sink.(apis.Convertible)
+
+	if err := duck.FromUnstructured(o, srcV); err != nil {
+		return nil, err
+	}
+
+	if version.CompareKubeAwareVersionStrings(toGVK.Version, fromGVK.Version) > 0 {
+		if err := srcV.UpTo(sinkV); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := sinkV.DownFrom(srcV); err != nil {
+			return nil, err
+		}
+	}
+	return sink, nil
+}
+
+// We define our own conversion types to avoid needing the 1.13 client libraries.
+type conversion struct {
+	Request  *conversionRequest  `json:"request,omitempty"`
+	Response *conversionResponse `json:"response,omitempty"`
+}
+type conversionRequest struct {
+	UID               types.UID                   `json:"uid"`
+	DesiredAPIVersion string                      `json:"desiredAPIVersion"`
+	Objects           []unstructured.Unstructured `json:"objects"`
+}
+type conversionResponse struct {
+	UID              types.UID        `json:"uid"`
+	ConvertedObjects []runtime.Object `json:"convertedObjects"`
+	Result           metav1.Status    `json:"result"`
+}
+
+func (ac *AdmissionController) serveConversion(w http.ResponseWriter, r *http.Request) {
+	convertReview := &conversion{}
+	if err := json.NewDecoder(r.Body).Decode(&convertReview); err != nil {
+		ac.Logger.Errorw("error decoding conversion srequest", zap.Error(err))
+		convertReview.Response = &conversionResponse{
+			UID: convertReview.Request.UID,
+			Result: metav1.Status{
+				Status:  metav1.StatusFailure,
+				Message: err.Error(),
+			},
+		}
+	} else {
+		convertedObjects, err := ac.doConversion(convertReview.Request)
+		convertReview.Response = &conversionResponse{
+			UID:              convertReview.Request.UID,
+			ConvertedObjects: convertedObjects,
+			Result: metav1.Status{
+				Status: metav1.StatusSuccess,
+			},
+		}
+		if err != nil {
+			convertReview.Response.Result = metav1.Status{
+				Status:  metav1.StatusFailure,
+				Message: err.Error(),
+			}
+		}
+	}
+
+	// Reset the request, it is not needed in a response.
+	convertReview.Request = &conversionRequest{}
+
+	if err := json.NewEncoder(w).Encode(convertReview); err != nil {
+		ac.Logger.Error("error encoding conversion response", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

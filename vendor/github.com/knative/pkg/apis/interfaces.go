@@ -55,3 +55,24 @@ type Listable interface {
 type Annotatable interface {
 	AnnotateUserInfo(ctx context.Context, previous Annotatable, ui *authenticationv1.UserInfo)
 }
+
+// Convertible handles conversions to/from types of a higher version.
+// The receiver is always the lower version, and the argument is always the
+// higher version.  Depending on the direction of the conversion (upgrade or
+// downgrade) the receiver may be the source or the sink of the transformation.
+// We handle both directions of conversion here to avoid dependency cycles
+// between high and low API version types.  We take the unidirectional
+// dependency in this direction so that as lower versions are dropped the
+// colocated conversions disappear alongside them, keeping the higher level
+// API clean.
+type Convertible interface {
+	// DownFrom downgrades from the provided Convertible into the receiver.
+	DownFrom(from Convertible) error
+
+	// UpTo upgrades from the receiver into the provided Convertible.
+	UpTo(to Convertible) error
+
+	// IsStorage indicates whether this Convertible's form should be used
+	// for storage.  Only one Version within a GroupKind may return true.
+	IsStorage() bool
+}

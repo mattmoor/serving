@@ -17,11 +17,15 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"errors"
+	"fmt"
 
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/kmeta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 // +genclient
@@ -54,6 +58,7 @@ var (
 	// Check that Service may be validated and defaulted.
 	_ apis.Validatable = (*Service)(nil)
 	_ apis.Defaultable = (*Service)(nil)
+	_ apis.Convertible = (*Service)(nil)
 
 	// Check that we can create OwnerReferences to a Service.
 	_ kmeta.OwnerRefable = (*Service)(nil)
@@ -180,4 +185,52 @@ type ServiceList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Service `json:"items"`
+}
+
+// IsStorage implements apis.Convertible.
+func (src *Service) IsStorage() bool { return true }
+
+// UpTo implements apis.Convertible.
+func (src *Service) UpTo(obj apis.Convertible) error {
+	switch target := obj.(type) {
+	case *v1beta1.Service:
+		gvk := target.GetGroupVersionKind()
+		target.APIVersion, target.Kind = gvk.ToAPIVersionAndKind()
+		target.ObjectMeta = src.ObjectMeta
+		if err := src.Spec.UpTo(&target.Spec); err != nil {
+			return err
+		}
+		return src.Status.UpTo(&target.Status)
+	default:
+		return fmt.Errorf("Unrecognized source type: %T", obj)
+	}
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *ServiceSpec) UpTo(target *v1beta1.ServiceSpec) error {
+	switch {
+	case src.RunLatest != nil:
+		// TODO(mattmoor): Populate the RouteSpec
+		return src.RunLatest.Configuration.UpTo(&target.ConfigurationSpec)
+	case src.Release != nil:
+		return errors.New("TODO: Release mode conversion.")
+	default:
+		return errors.New("Unsupported mode.")
+	}
+}
+
+// UpTo helps implement apis.Convertible.
+func (src *ServiceStatus) UpTo(target *v1beta1.ServiceStatus) error {
+	// TODO(mattmoor): Translate conditions.
+	target.Status = src.Status
+
+	if err := src.ConfigurationStatusFields.UpTo(&target.ConfigurationStatusFields); err != nil {
+		return err
+	}
+	return src.RouteStatusFields.UpTo(&target.RouteStatusFields)
+}
+
+// DownFrom implement apis.Convertible.
+func (target *Service) DownFrom(src apis.Convertible) error {
+	return errors.New("TODO: DownFrom v1beta1.")
 }
