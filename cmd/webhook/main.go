@@ -20,6 +20,7 @@ import (
 	"flag"
 	"log"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"go.uber.org/zap"
@@ -35,7 +36,6 @@ import (
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/logging"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 )
@@ -78,15 +78,14 @@ func main() {
 		logger.Fatalw("Failed to get the client set", zap.Error(err))
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(clusterConfig)
+	if err != nil {
+		logger.Fatalw("Error building build clientset", zap.Error(err))
+	}
+
 	if err := version.CheckMinimumVersion(kubeClient.Discovery()); err != nil {
 		logger.Fatalf("Version check failed: %v", err)
 	}
-
-	apiExtClient, err := apiextensionsclient.NewForConfig(clusterConfig)
-	if err != nil {
-		logger.Fatalw("Failed to get the api-ext client set", zap.Error(err))
-	}
-	logger.Infof("Successfully got the apiExtClient: %+v", apiExtClient)
 
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace())
@@ -104,18 +103,24 @@ func main() {
 		WebhookName:    "webhook.serving.knative.dev",
 	}
 	controller := webhook.AdmissionController{
-		Client:       kubeClient,
-		APIExtClient: apiExtClient,
-		Options:      options,
+		Client:        kubeClient,
+		DynamicClient: dynamicClient,
+		Options:       options,
 		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
 			v1alpha1.SchemeGroupVersion.WithKind("Revision"):      &v1alpha1.Revision{},
 			v1alpha1.SchemeGroupVersion.WithKind("Configuration"): &v1alpha1.Configuration{},
 			v1alpha1.SchemeGroupVersion.WithKind("Route"):         &v1alpha1.Route{},
 			v1alpha1.SchemeGroupVersion.WithKind("Service"):       &v1alpha1.Service{},
-			kpa.SchemeGroupVersion.WithKind("PodAutoscaler"):      &kpa.PodAutoscaler{},
-			net.SchemeGroupVersion.WithKind("Certificate"):        &net.Certificate{},
-			net.SchemeGroupVersion.WithKind("ClusterIngress"):     &net.ClusterIngress{},
-			net.SchemeGroupVersion.WithKind("ServerlessService"):  &net.ServerlessService{},
+
+			v1beta1.SchemeGroupVersion.WithKind("Revision"):      &v1beta1.Revision{},
+			v1beta1.SchemeGroupVersion.WithKind("Configuration"): &v1beta1.Configuration{},
+			v1beta1.SchemeGroupVersion.WithKind("Route"):         &v1beta1.Route{},
+			v1beta1.SchemeGroupVersion.WithKind("Service"):       &v1beta1.Service{},
+
+			kpa.SchemeGroupVersion.WithKind("PodAutoscaler"):     &kpa.PodAutoscaler{},
+			net.SchemeGroupVersion.WithKind("Certificate"):       &net.Certificate{},
+			net.SchemeGroupVersion.WithKind("ClusterIngress"):    &net.ClusterIngress{},
+			net.SchemeGroupVersion.WithKind("ServerlessService"): &net.ServerlessService{},
 		},
 		Logger: logger,
 	}

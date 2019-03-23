@@ -17,11 +17,12 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"errors"
 
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/kmeta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -54,6 +55,7 @@ var (
 	// Check that Service may be validated and defaulted.
 	_ apis.Validatable = (*Service)(nil)
 	_ apis.Defaultable = (*Service)(nil)
+	_ apis.Versionable = (*Service)(nil)
 
 	// Check that we can create OwnerReferences to a Service.
 	_ kmeta.OwnerRefable = (*Service)(nil)
@@ -214,4 +216,15 @@ type ServiceList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Service `json:"items"`
+}
+
+// UpFrom populates the receiver with the up-converted input object.
+func (s *Service) UpFrom(obj apis.Versionable) error {
+	return errors.New("There is no lower type to convert from.")
+}
+
+// DownTo populates the provided input object with the appropriately
+// down-converted object.
+func (s *Service) DownTo(obj apis.Versionable) error {
+	return errors.New("There is no lower type to convert to.")
 }
