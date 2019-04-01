@@ -435,12 +435,13 @@
   revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
 
 [[projects]]
-  digest = "1:f934ef9f89ea60cbfec7d848757245927e243aef5572e07a6fefcc3a1d2990a3"
+  digest = "1:0b2007a4488cc86e71524f17a536568ce753ab1dba56cd2329422437161ac8f8"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
     "apis/duck",
     "apis/duck/v1alpha1",
+    "apis/duck/v1beta1",
     "apis/istio",
     "apis/istio/authentication",
     "apis/istio/authentication/v1alpha1",
@@ -487,7 +488,8 @@
     "websocket",
   ]
   pruneopts = "NUT"
-  revision = "1d9d8f8871250649adab16e3369e1a09e5595b04"
+  revision = "db0222e392b7a889d787b2b56d1254a4d19d524c"
+  source = "github.com/mattmoor/pkg-1"
 
 [[projects]]
   branch = "master"
@@ -1308,6 +1310,7 @@
     "github.com/knative/pkg/apis",
     "github.com/knative/pkg/apis/duck",
     "github.com/knative/pkg/apis/duck/v1alpha1",
+    "github.com/knative/pkg/apis/duck/v1beta1",
     "github.com/knative/pkg/apis/istio/common/v1alpha1",
     "github.com/knative/pkg/apis/istio/v1alpha3",
     "github.com/knative/pkg/client/clientset/versioned",

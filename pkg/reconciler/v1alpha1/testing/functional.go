@@ -23,6 +23,7 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/apis/duck"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/serving/pkg/apis/autoscaling"
 	autoscalingv1alpha1 "github.com/knative/serving/pkg/apis/autoscaling/v1alpha1"
 	"github.com/knative/serving/pkg/apis/networking"
@@ -268,8 +269,8 @@ func WithManualStatus(s *v1alpha1.Service) {
 // WithReadyRoute reflects the Route's readiness in the Service resource.
 func WithReadyRoute(s *v1alpha1.Service) {
 	s.Status.PropagateRouteStatus(&v1alpha1.RouteStatus{
-		Status: duckv1alpha1.Status{
-			Conditions: []duckv1alpha1.Condition{{
+		Status: duckv1beta1.Status{
+			Conditions: duckv1beta1.Conditions{{
 				Type:   "Ready",
 				Status: "True",
 			}},
@@ -311,8 +312,8 @@ func WithSvcStatusTraffic(targets ...v1alpha1.TrafficTarget) ServiceOption {
 func WithFailedRoute(reason, message string) ServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.PropagateRouteStatus(&v1alpha1.RouteStatus{
-			Status: duckv1alpha1.Status{
-				Conditions: []duckv1alpha1.Condition{{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{{
 					Type:    "Ready",
 					Status:  "False",
 					Reason:  reason,
@@ -329,8 +330,8 @@ func WithFailedRoute(reason, message string) ServiceOption {
 func WithReadyConfig(name string) ServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.PropagateConfigurationStatus(&v1alpha1.ConfigurationStatus{
-			Status: duckv1alpha1.Status{
-				Conditions: []duckv1alpha1.Condition{{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{{
 					Type:   "Ready",
 					Status: "True",
 				}},
@@ -348,8 +349,8 @@ func WithReadyConfig(name string) ServiceOption {
 func WithFailedConfig(name, reason, message string) ServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.PropagateConfigurationStatus(&v1alpha1.ConfigurationStatus{
-			Status: duckv1alpha1.Status{
-				Conditions: []duckv1alpha1.Condition{{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{{
 					Type:   "Ready",
 					Status: "False",
 					Reason: reason,
@@ -482,8 +483,8 @@ func MarkTrafficAssigned(r *v1alpha1.Route) {
 // MarkIngressReady propagates a Ready=True ClusterIngress status to the Route.
 func MarkIngressReady(r *v1alpha1.Route) {
 	r.Status.PropagateClusterIngressStatus(netv1alpha1.IngressStatus{
-		Status: duckv1alpha1.Status{
-			Conditions: []duckv1alpha1.Condition{{
+		Status: duckv1beta1.Status{
+			Conditions: duckv1beta1.Conditions{{
 				Type:   "Ready",
 				Status: "True",
 			}},
