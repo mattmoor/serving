@@ -84,6 +84,7 @@ type TrafficTarget struct {
 
 	// Percent specifies percent of the traffic to this Revision or Configuration.
 	// This defaults to zero if unspecified.
+	// +optional
 	Percent int `json:"percent"`
 
 	// URL displays the URL for accessing named traffic targets. URL is displayed in
