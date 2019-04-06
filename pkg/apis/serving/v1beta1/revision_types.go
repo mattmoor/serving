@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
 	"github.com/knative/pkg/apis"
 	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/pkg/kmeta"
@@ -72,6 +74,11 @@ type RevisionContainerConcurrencyType int64
 const (
 	// The maximum configurable container concurrency.
 	RevisionContainerConcurrencyMax RevisionContainerConcurrencyType = 1000
+)
+
+var (
+	// Used in validation messages.
+	revisionContainerConcurrencyMax = fmt.Sprintf("%d", RevisionContainerConcurrencyMax)
 )
 
 // RevisionSpec holds the desired state of the Revision (from the client).
