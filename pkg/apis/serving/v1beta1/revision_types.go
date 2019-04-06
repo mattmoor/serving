@@ -49,7 +49,6 @@ var (
 	// Check that Revision can be validated, can be defaulted, and has immutable fields.
 	_ apis.Validatable = (*Revision)(nil)
 	_ apis.Defaultable = (*Revision)(nil)
-	_ apis.Immutable   = (*Revision)(nil)
 
 	// Check that we can create OwnerReferences to a Revision.
 	_ kmeta.OwnerRefable = (*Revision)(nil)
@@ -87,8 +86,9 @@ type RevisionSpec struct {
 	ContainerConcurrency RevisionContainerConcurrencyType `json:"containerConcurrency,omitempty"`
 
 	// TimeoutSeconds holds the max duration the instance is allowed for responding to a request.
+	// If unspecified, a system default will be provided.
 	// +optional
-	TimeoutSeconds int64 `json:"timeoutSeconds,omitempty"`
+	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty"`
 }
 
 const (

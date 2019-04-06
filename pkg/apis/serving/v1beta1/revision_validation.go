@@ -26,8 +26,3 @@ import (
 func (rt *Revision) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
-
-// CheckImmutableFields checks the immutable fields are not modified.
-func (current *Revision) CheckImmutableFields(ctx context.Context, og apis.Immutable) *apis.FieldError {
-	return nil
-}
