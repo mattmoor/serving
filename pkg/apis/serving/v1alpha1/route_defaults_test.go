@@ -21,18 +21,51 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 func TestRouteDefaulting(t *testing.T) {
+	boolTrue := true
+	boolFalse := false
 	tests := []struct {
 		name string
 		in   *Route
 		want *Route
 	}{{
 		name: "empty",
-		in:   &Route{},
-		// At present, Route doesn't initialize any defaults.
-		want: &Route{},
+		in: &Route{
+			Spec: RouteSpec{
+				Traffic: []TrafficTarget{{
+					TrafficTarget: v1beta1.TrafficTarget{
+						ConfigurationName: "foo",
+						Percent:           50,
+					},
+				}, {
+					TrafficTarget: v1beta1.TrafficTarget{
+						RevisionName: "foo",
+						Percent:      50,
+					},
+				}},
+			},
+		},
+		want: &Route{
+			Spec: RouteSpec{
+				Traffic: []TrafficTarget{{
+					TrafficTarget: v1beta1.TrafficTarget{
+						ConfigurationName: "foo",
+						Percent:           50,
+						LatestRevision:    &boolTrue,
+					},
+				}, {
+					TrafficTarget: v1beta1.TrafficTarget{
+						RevisionName:   "foo",
+						Percent:        50,
+						LatestRevision: &boolFalse,
+					},
+				}},
+			},
+		},
 	}}
 
 	for _, test := range tests {
