@@ -38,10 +38,10 @@ type Validatable interface {
 // "higher" versions of the same type.
 type Convertible interface {
 	// ConvertUp up-converts the receiver into `to`.
-	ConvertUp(ctx context.Context, to Convertible) error
+	ConvertUp(to Convertible) error
 
 	// ConvertDown down-converts from `from` into the receiver.
-	ConvertDown(ctx context.Context, from Convertible) error
+	ConvertDown(from Convertible) error
 }
 
 // Immutable indicates that a particular type has fields that should
