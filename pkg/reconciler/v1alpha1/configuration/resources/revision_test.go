@@ -44,7 +44,7 @@ func TestMakeRevisions(t *testing.T) {
 			Spec: v1alpha1.ConfigurationSpec{
 				RevisionTemplate: v1alpha1.RevisionTemplateSpec{
 					Spec: v1alpha1.RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "busybox",
 						},
 					},
@@ -71,7 +71,7 @@ func TestMakeRevisions(t *testing.T) {
 				},
 			},
 			Spec: v1alpha1.RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "busybox",
 				},
 			},
@@ -92,7 +92,7 @@ func TestMakeRevisions(t *testing.T) {
 				}},
 				RevisionTemplate: v1alpha1.RevisionTemplateSpec{
 					Spec: v1alpha1.RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "busybox",
 						},
 					},
@@ -129,7 +129,7 @@ func TestMakeRevisions(t *testing.T) {
 					Kind:       "Build",
 					Name:       "build-00099",
 				},
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "busybox",
 				},
 			},
@@ -151,7 +151,7 @@ func TestMakeRevisions(t *testing.T) {
 						},
 					},
 					Spec: v1alpha1.RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "busybox",
 						},
 					},
@@ -180,7 +180,7 @@ func TestMakeRevisions(t *testing.T) {
 				},
 			},
 			Spec: v1alpha1.RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "busybox",
 				},
 			},
@@ -202,7 +202,7 @@ func TestMakeRevisions(t *testing.T) {
 						},
 					},
 					Spec: v1alpha1.RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "busybox",
 						},
 					},
@@ -232,7 +232,7 @@ func TestMakeRevisions(t *testing.T) {
 				},
 			},
 			Spec: v1alpha1.RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "busybox",
 				},
 			},

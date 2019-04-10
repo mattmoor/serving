@@ -29,6 +29,7 @@ import (
 	"github.com/knative/pkg/system"
 	"github.com/knative/serving/pkg/apis/serving"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/autoscaler"
 	fakeclientset "github.com/knative/serving/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/serving/pkg/client/informers/externalversions"
@@ -68,6 +69,7 @@ const (
 )
 
 func getTestRevision() *v1alpha1.Revision {
+	ts := int64(60)
 	return &v1alpha1.Revision{
 		ObjectMeta: metav1.ObjectMeta{
 			SelfLink:  "/apis/serving/v1alpha1/namespaces/test/revisions/test-rev",
@@ -87,7 +89,7 @@ func getTestRevision() *v1alpha1.Revision {
 			// corev1.Container has a lot of setting.  We try to pass many
 			// of them here to verify that we pass through the settings to
 			// derived objects.
-			Container: corev1.Container{
+			DeprecatedContainer: &corev1.Container{
 				Image:      "gcr.io/repo/image",
 				Command:    []string{"echo"},
 				Args:       []string{"hello", "world"},
@@ -110,7 +112,9 @@ func getTestRevision() *v1alpha1.Revision {
 				TerminationMessagePath: "/dev/null",
 			},
 			DeprecatedConcurrencyModel: v1alpha1.RevisionRequestConcurrencyModelMulti,
-			TimeoutSeconds:             60,
+			RevisionSpec: v1beta1.RevisionSpec{
+				TimeoutSeconds: &ts,
+			},
 		},
 	}
 }

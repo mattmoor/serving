@@ -39,7 +39,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 		c: &ConfigurationSpec{
 			RevisionTemplate: RevisionTemplateSpec{
 				Spec: RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
 					},
 				},
@@ -51,7 +51,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 		c: &ConfigurationSpec{
 			RevisionTemplate: RevisionTemplateSpec{
 				Spec: RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Name:  "stuart",
 						Image: "hellworld",
 					},
@@ -71,7 +71,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 			},
 			RevisionTemplate: RevisionTemplateSpec{
 				Spec: RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
 					},
 				},
@@ -96,7 +96,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 			},
 			RevisionTemplate: RevisionTemplateSpec{
 				Spec: RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
 					},
 				},
@@ -117,7 +117,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 			},
 			RevisionTemplate: RevisionTemplateSpec{
 				Spec: RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
 					},
 				},
@@ -132,7 +132,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 			},
 			RevisionTemplate: RevisionTemplateSpec{
 				Spec: RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
 					},
 				},
@@ -165,7 +165,7 @@ func TestConfigurationValidation(t *testing.T) {
 			Spec: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "hellworld",
 						},
 					},
@@ -182,7 +182,7 @@ func TestConfigurationValidation(t *testing.T) {
 			Spec: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Name:  "stuart",
 							Image: "hellworld",
 						},

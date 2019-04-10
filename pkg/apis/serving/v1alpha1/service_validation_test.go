@@ -46,7 +46,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -68,7 +68,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -90,7 +90,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -113,7 +113,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -145,7 +145,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -157,7 +157,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -192,7 +192,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Name:  "foo",
 									Image: "hellworld",
 								},
@@ -215,7 +215,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Name:  "foo",
 									Image: "hellworld",
 								},
@@ -237,7 +237,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -259,7 +259,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -281,7 +281,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -303,7 +303,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -325,7 +325,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -347,7 +347,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -370,7 +370,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -393,7 +393,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -416,7 +416,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -437,7 +437,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -461,7 +461,7 @@ func TestServiceValidation(t *testing.T) {
 					Configuration: ConfigurationSpec{
 						RevisionTemplate: RevisionTemplateSpec{
 							Spec: RevisionSpec{
-								Container: corev1.Container{
+								DeprecatedContainer: &corev1.Container{
 									Image: "hellworld",
 								},
 							},
@@ -497,7 +497,7 @@ func TestRunLatestTypeValidation(t *testing.T) {
 			Configuration: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "hellworld",
 						},
 					},
@@ -511,7 +511,7 @@ func TestRunLatestTypeValidation(t *testing.T) {
 			Configuration: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Name:  "stuart",
 							Image: "hellworld",
 						},
@@ -544,7 +544,7 @@ func TestPinnedTypeValidation(t *testing.T) {
 			Configuration: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "hellworld",
 						},
 					},
@@ -558,7 +558,7 @@ func TestPinnedTypeValidation(t *testing.T) {
 			Configuration: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Image: "hellworld",
 						},
 					},
@@ -573,7 +573,7 @@ func TestPinnedTypeValidation(t *testing.T) {
 			Configuration: ConfigurationSpec{
 				RevisionTemplate: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						Container: corev1.Container{
+						DeprecatedContainer: &corev1.Container{
 							Name:  "stuart",
 							Image: "hellworld",
 						},

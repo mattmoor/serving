@@ -101,9 +101,29 @@ func (r *Revision) BuildRef() *corev1.ObjectReference {
 	return nil
 }
 
+func (rts *RevisionTemplateSpec) GetContainer() corev1.Container {
+	if rts.Spec.DeprecatedContainer != nil {
+		return *rts.Spec.DeprecatedContainer
+	}
+	if len(rts.Spec.Containers) > 0 {
+		return rts.Spec.Containers[0]
+	}
+	return corev1.Container{}
+}
+
+func (r *Revision) GetContainer() corev1.Container {
+	if r.Spec.DeprecatedContainer != nil {
+		return *r.Spec.DeprecatedContainer
+	}
+	if len(r.Spec.Containers) > 0 {
+		return r.Spec.Containers[0]
+	}
+	return corev1.Container{}
+}
+
 // GetProtocol returns the app level network protocol.
 func (r *Revision) GetProtocol() net.ProtocolType {
-	ports := r.Spec.Container.Ports
+	ports := r.GetContainer().Ports
 	if len(ports) > 0 && ports[0].Name == string(net.ProtocolH2C) {
 		return net.ProtocolH2C
 	}

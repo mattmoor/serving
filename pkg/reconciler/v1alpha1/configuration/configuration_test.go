@@ -27,6 +27,7 @@ import (
 	"github.com/knative/pkg/controller"
 	"github.com/knative/serving/pkg/apis/serving"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/gc"
 	"github.com/knative/serving/pkg/reconciler"
 	"github.com/knative/serving/pkg/reconciler/v1alpha1/configuration/config"
@@ -41,12 +42,17 @@ import (
 	. "github.com/knative/serving/pkg/reconciler/v1alpha1/testing"
 )
 
-var revisionSpec = v1alpha1.RevisionSpec{
-	Container: corev1.Container{
-		Image: "busybox",
-	},
-	TimeoutSeconds: 60,
-}
+var (
+	timeoutSeconds = int64(60)
+	revisionSpec   = v1alpha1.RevisionSpec{
+		DeprecatedContainer: &corev1.Container{
+			Image: "busybox",
+		},
+		RevisionSpec: v1beta1.RevisionSpec{
+			TimeoutSeconds: &timeoutSeconds,
+		},
+	}
+)
 
 // This is heavily based on the way the OpenShift Ingress controller tests its reconciliation method.
 func TestReconcile(t *testing.T) {

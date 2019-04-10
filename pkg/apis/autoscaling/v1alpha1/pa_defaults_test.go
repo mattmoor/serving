@@ -82,8 +82,8 @@ func TestPodAutoscalerDefaulting(t *testing.T) {
 		name: "fall back to concurrency model",
 		in: &PodAutoscaler{
 			Spec: PodAutoscalerSpec{
-				ConcurrencyModel:     "Single",
-				ContainerConcurrency: 0, // unspecified
+				DeprecatedConcurrencyModel: "Single",
+				ContainerConcurrency:       0, // unspecified
 			},
 		},
 		want: &PodAutoscaler{
@@ -94,8 +94,8 @@ func TestPodAutoscalerDefaulting(t *testing.T) {
 				},
 			},
 			Spec: PodAutoscalerSpec{
-				ConcurrencyModel:     "Single",
-				ContainerConcurrency: 1,
+				DeprecatedConcurrencyModel: "Single",
+				ContainerConcurrency:       1,
 			},
 		},
 	}, {

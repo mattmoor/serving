@@ -103,17 +103,29 @@ func (rs *RevisionSpec) Validate(ctx context.Context) *apis.FieldError {
 		volumes.Insert(volume.Name)
 	}
 
-	errs = errs.Also(validateContainer(rs.Container, volumes).ViaField("container"))
+	switch {
+	case len(rs.PodSpec.Containers) > 0 && rs.DeprecatedContainer != nil:
+		errs = errs.Also(apis.ErrMultipleOneOf("container", "containers"))
+	case len(rs.PodSpec.Containers) > 0:
+		errs = errs.Also(rs.RevisionSpec.Validate(ctx))
+	case rs.DeprecatedContainer != nil:
+		errs = errs.Also(validateContainer(
+			*rs.DeprecatedContainer, volumes).ViaField("container"))
+	default:
+		errs = errs.Also(apis.ErrMissingOneOf("container", "containers"))
+	}
 	errs = errs.Also(validateBuildRef(rs.BuildRef).ViaField("buildRef"))
 
 	if err := rs.DeprecatedConcurrencyModel.Validate(ctx).ViaField("concurrencyModel"); err != nil {
 		errs = errs.Also(err)
 	} else {
-		errs = errs.Also(ValidateContainerConcurrency(
-			rs.ContainerConcurrency, rs.DeprecatedConcurrencyModel))
+		errs = errs.Also(rs.ContainerConcurrency.Validate(ctx))
 	}
 
-	return errs.Also(validateTimeoutSeconds(rs.TimeoutSeconds))
+	if rs.TimeoutSeconds != nil {
+		errs = errs.Also(validateTimeoutSeconds(*rs.TimeoutSeconds))
+	}
+	return errs
 }
 
 func validateTimeoutSeconds(timeoutSeconds int64) *apis.FieldError {
@@ -150,27 +162,6 @@ func (cm RevisionRequestConcurrencyModelType) Validate(ctx context.Context) *api
 	default:
 		return apis.ErrInvalidValue(cm, apis.CurrentField)
 	}
-}
-
-// ValidateContainerConcurrency ensures ContainerConcurrency is properly configured.
-func ValidateContainerConcurrency(cc RevisionContainerConcurrencyType, cm RevisionRequestConcurrencyModelType) *apis.FieldError {
-	// Validate ContainerConcurrency alone
-	if cc < 0 || cc > RevisionContainerConcurrencyMax {
-		return apis.ErrInvalidValue(cc, "containerConcurrency")
-	}
-
-	// Validate combinations of ConcurrencyModel and ContainerConcurrency
-	if cc == 0 && cm != RevisionRequestConcurrencyModelMulti && cm != RevisionRequestConcurrencyModelType("") {
-		return apis.ErrMultipleOneOf("containerConcurrency", "concurrencyModel")
-	}
-	if cc == 1 && cm != RevisionRequestConcurrencyModelSingle && cm != RevisionRequestConcurrencyModelType("") {
-		return apis.ErrMultipleOneOf("containerConcurrency", "concurrencyModel")
-	}
-	if cc > 1 && cm != RevisionRequestConcurrencyModelType("") {
-		return apis.ErrMultipleOneOf("containerConcurrency", "concurrencyModel")
-	}
-
-	return nil
 }
 
 func validateVolume(volume corev1.Volume) *apis.FieldError {

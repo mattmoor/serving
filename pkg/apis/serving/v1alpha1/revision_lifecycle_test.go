@@ -652,7 +652,7 @@ func TestRevisionGetProtocol(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &Revision{Spec: RevisionSpec{Container: tt.container}}
+			r := &Revision{Spec: RevisionSpec{DeprecatedContainer: &tt.container}}
 
 			got := r.GetProtocol()
 			want := tt.protocol

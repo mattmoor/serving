@@ -88,7 +88,7 @@ func getTestRevisionWithCondition(name string, cond apis.Condition) *v1alpha1.Re
 			Namespace: testNamespace,
 		},
 		Spec: v1alpha1.RevisionSpec{
-			Container: corev1.Container{
+			DeprecatedContainer: &corev1.Container{
 				Image: "test-image",
 			},
 		},
@@ -113,7 +113,7 @@ func getTestConfiguration() *v1alpha1.Configuration {
 			DeprecatedGeneration: 1,
 			RevisionTemplate: v1alpha1.RevisionTemplateSpec{
 				Spec: v1alpha1.RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "test-image",
 					},
 				},

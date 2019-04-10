@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/serving/pkg/apis/config"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 func TestRevisionDefaulting(t *testing.T) {
@@ -39,9 +40,11 @@ func TestRevisionDefaulting(t *testing.T) {
 		in:   &Revision{},
 		want: &Revision{
 			Spec: RevisionSpec{
-				ContainerConcurrency: 0,
-				TimeoutSeconds:       config.DefaultRevisionTimeoutSeconds,
-				Container: corev1.Container{
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 0,
+					TimeoutSeconds:       intptr(config.DefaultRevisionTimeoutSeconds),
+				},
+				DeprecatedContainer: &corev1.Container{
 					Resources: defaultResources,
 				},
 			},
@@ -64,9 +67,11 @@ func TestRevisionDefaulting(t *testing.T) {
 		},
 		want: &Revision{
 			Spec: RevisionSpec{
-				ContainerConcurrency: 0,
-				TimeoutSeconds:       123,
-				Container: corev1.Container{
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 0,
+					TimeoutSeconds:       intptr(123),
+				},
+				DeprecatedContainer: &corev1.Container{
 					Resources: defaultResources,
 				},
 			},
@@ -75,19 +80,21 @@ func TestRevisionDefaulting(t *testing.T) {
 		name: "readonly volumes",
 		in: &Revision{
 			Spec: RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "foo",
 					VolumeMounts: []corev1.VolumeMount{{
 						Name: "bar",
 					}},
 				},
-				ContainerConcurrency: 1,
-				TimeoutSeconds:       99,
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 1,
+					TimeoutSeconds:       intptr(99),
+				},
 			},
 		},
 		want: &Revision{
 			Spec: RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "foo",
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:     "bar",
@@ -95,23 +102,29 @@ func TestRevisionDefaulting(t *testing.T) {
 					}},
 					Resources: defaultResources,
 				},
-				ContainerConcurrency: 1,
-				TimeoutSeconds:       99,
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 1,
+					TimeoutSeconds:       intptr(99),
+				},
 			},
 		},
 	}, {
 		name: "no overwrite",
 		in: &Revision{
 			Spec: RevisionSpec{
-				ContainerConcurrency: 1,
-				TimeoutSeconds:       99,
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 1,
+					TimeoutSeconds:       intptr(99),
+				},
 			},
 		},
 		want: &Revision{
 			Spec: RevisionSpec{
-				ContainerConcurrency: 1,
-				TimeoutSeconds:       99,
-				Container: corev1.Container{
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 1,
+					TimeoutSeconds:       intptr(99),
+				},
+				DeprecatedContainer: &corev1.Container{
 					Resources: defaultResources,
 				},
 			},
@@ -123,9 +136,11 @@ func TestRevisionDefaulting(t *testing.T) {
 		},
 		want: &Revision{
 			Spec: RevisionSpec{
-				ContainerConcurrency: 0,
-				TimeoutSeconds:       config.DefaultRevisionTimeoutSeconds,
-				Container: corev1.Container{
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 0,
+					TimeoutSeconds:       intptr(config.DefaultRevisionTimeoutSeconds),
+				},
+				DeprecatedContainer: &corev1.Container{
 					Resources: defaultResources,
 				},
 			},
@@ -135,15 +150,19 @@ func TestRevisionDefaulting(t *testing.T) {
 		in: &Revision{
 			Spec: RevisionSpec{
 				DeprecatedConcurrencyModel: "Single",
-				ContainerConcurrency:       0, // unspecified
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 0, // unspecified
+				},
 			},
 		},
 		want: &Revision{
 			Spec: RevisionSpec{
 				DeprecatedConcurrencyModel: "Single",
-				ContainerConcurrency:       1,
-				TimeoutSeconds:             config.DefaultRevisionTimeoutSeconds,
-				Container: corev1.Container{
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: 1,
+					TimeoutSeconds:       intptr(config.DefaultRevisionTimeoutSeconds),
+				},
+				DeprecatedContainer: &corev1.Container{
 					Resources: defaultResources,
 				},
 			},

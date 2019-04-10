@@ -26,6 +26,7 @@ import (
 	_ "github.com/knative/pkg/system/testing"
 	"github.com/knative/serving/pkg/apis/serving"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/autoscaler"
 	"github.com/knative/serving/pkg/network"
 	"github.com/knative/serving/pkg/reconciler/v1alpha1/revision/config"
@@ -201,6 +202,7 @@ var (
 		},
 	}
 
+	timeout         = int64(45)
 	defaultRevision = &v1alpha1.Revision{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -212,10 +214,12 @@ var (
 			},
 		},
 		Spec: v1alpha1.RevisionSpec{
-			Container: corev1.Container{
+			DeprecatedContainer: &corev1.Container{
 				Image: "busybox",
 			},
-			TimeoutSeconds: 45,
+			RevisionSpec: v1beta1.RevisionSpec{
+				TimeoutSeconds: &timeout,
+			},
 		},
 	}
 )
@@ -332,9 +336,9 @@ func revision(opts ...revisionOption) *v1alpha1.Revision {
 	return revision
 }
 
-func withContainerConcurrency(containerConcurrency int) revisionOption {
+func withContainerConcurrency(cc v1beta1.RevisionContainerConcurrencyType) revisionOption {
 	return func(revision *v1alpha1.Revision) {
-		revision.Spec.ContainerConcurrency = v1alpha1.RevisionContainerConcurrencyType(containerConcurrency)
+		revision.Spec.ContainerConcurrency = cc
 	}
 }
 
@@ -368,7 +372,7 @@ func TestMakePodSpec(t *testing.T) {
 		rev: revision(
 			withContainerConcurrency(1),
 			func(revision *v1alpha1.Revision) {
-				revision.Spec.Container.Ports = []corev1.ContainerPort{{
+				revision.Spec.DeprecatedContainer.Ports = []corev1.ContainerPort{{
 					ContainerPort: 8888,
 				}}
 			},
@@ -394,10 +398,10 @@ func TestMakePodSpec(t *testing.T) {
 		rev: revision(
 			withContainerConcurrency(1),
 			func(revision *v1alpha1.Revision) {
-				revision.Spec.Container.Ports = []corev1.ContainerPort{{
+				revision.Spec.DeprecatedContainer.Ports = []corev1.ContainerPort{{
 					ContainerPort: 8888,
 				}}
-				revision.Spec.Container.VolumeMounts = []corev1.VolumeMount{{
+				revision.Spec.DeprecatedContainer.VolumeMounts = []corev1.VolumeMount{{
 					Name:      "asdf",
 					MountPath: "/asdf",
 				}}
@@ -493,7 +497,7 @@ func TestMakePodSpec(t *testing.T) {
 	}, {
 		name: "simple concurrency=multi http readiness probe",
 		rev: revision(func(revision *v1alpha1.Revision) {
-			container(&revision.Spec.Container,
+			container(revision.Spec.DeprecatedContainer,
 				withHTTPReadinessProbe(v1alpha1.DefaultUserPort),
 			)
 		}),
@@ -512,7 +516,7 @@ func TestMakePodSpec(t *testing.T) {
 	}, {
 		name: "concurrency=multi, readinessprobe=shell",
 		rev: revision(func(revision *v1alpha1.Revision) {
-			container(&revision.Spec.Container,
+			container(revision.Spec.DeprecatedContainer,
 				withExecReadinessProbe(
 					[]string{"echo", "hello"},
 				),
@@ -535,7 +539,7 @@ func TestMakePodSpec(t *testing.T) {
 	}, {
 		name: "concurrency=multi, readinessprobe=http",
 		rev: revision(func(revision *v1alpha1.Revision) {
-			container(&revision.Spec.Container,
+			container(revision.Spec.DeprecatedContainer,
 				withReadinessProbe(corev1.Handler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/",
@@ -558,7 +562,7 @@ func TestMakePodSpec(t *testing.T) {
 	}, {
 		name: "concurrency=multi, livenessprobe=tcp",
 		rev: revision(func(revision *v1alpha1.Revision) {
-			container(&revision.Spec.Container,
+			container(revision.Spec.DeprecatedContainer,
 				withLivenessProbe(corev1.Handler{
 					TCPSocket: &corev1.TCPSocketAction{},
 				}),
@@ -617,13 +621,13 @@ func TestMakePodSpec(t *testing.T) {
 			withContainerConcurrency(1),
 			func(revision *v1alpha1.Revision) {
 				revision.ObjectMeta.Labels = map[string]string{}
-				revision.Spec.Container.Command = []string{"/bin/bash"}
-				revision.Spec.Container.Args = []string{"-c", "echo Hello world"}
-				container(&revision.Spec.Container,
+				revision.Spec.DeprecatedContainer.Command = []string{"/bin/bash"}
+				revision.Spec.DeprecatedContainer.Args = []string{"-c", "echo Hello world"}
+				container(revision.Spec.DeprecatedContainer,
 					withEnvVar("FOO", "bar"),
 					withEnvVar("BAZ", "blah"),
 				)
-				revision.Spec.Container.Resources = corev1.ResourceRequirements{
+				revision.Spec.DeprecatedContainer.Resources = corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceMemory: resource.MustParse("666Mi"),
 						corev1.ResourceCPU:    resource.MustParse("666m"),
@@ -633,7 +637,7 @@ func TestMakePodSpec(t *testing.T) {
 						corev1.ResourceCPU:    resource.MustParse("888m"),
 					},
 				}
-				revision.Spec.Container.TerminationMessagePolicy = corev1.TerminationMessageReadFile
+				revision.Spec.DeprecatedContainer.TerminationMessagePolicy = corev1.TerminationMessageReadFile
 			},
 		),
 		lc: &logging.Config{},

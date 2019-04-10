@@ -25,7 +25,6 @@ import (
 	"github.com/knative/pkg/kmp"
 	"github.com/knative/serving/pkg/apis/autoscaling"
 	"github.com/knative/serving/pkg/apis/serving"
-	servingv1alpha1 "github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -79,11 +78,8 @@ func (rs *PodAutoscalerSpec) Validate(ctx context.Context) *apis.FieldError {
 	if rs.ServiceName == "" {
 		errs = errs.Also(apis.ErrMissingField("serviceName"))
 	}
-	if err := rs.ConcurrencyModel.Validate(ctx); err != nil {
-		errs = errs.Also(err.ViaField("concurrencyModel"))
-	} else if err := servingv1alpha1.ValidateContainerConcurrency(rs.ContainerConcurrency, rs.ConcurrencyModel); err != nil {
-		errs = errs.Also(err)
-	}
+	errs = errs.Also(rs.ContainerConcurrency.Validate(ctx).
+		ViaField("containerConcurrency"))
 	return errs.Also(validateSKSFields(rs))
 }
 

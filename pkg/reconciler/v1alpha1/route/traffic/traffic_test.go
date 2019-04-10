@@ -593,7 +593,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 		Targets: map[string]RevisionTargets{
 			DefaultTarget: {{
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "one",
+					Subroute:          "one",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodOldRev.Name,
 					Percent:           49,
@@ -602,7 +602,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 				Protocol: net.ProtocolHTTP1,
 			}, {
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "two",
+					Subroute:          "two",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodNewRev.Name,
 					Percent:           51,
@@ -612,7 +612,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 			}},
 			"one": {{
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "one",
+					Subroute:          "one",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodOldRev.Name,
 					Percent:           100,
@@ -622,7 +622,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 			}},
 			"two": {{
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "two",
+					Subroute:          "two",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodNewRev.Name,
 					Percent:           100,
@@ -632,7 +632,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 			}},
 			"also-two": {{
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "also-two",
+					Subroute:          "also-two",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodNewRev.Name,
 					Percent:           100,
@@ -643,7 +643,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 		},
 		revisionTargets: []RevisionTarget{{
 			TrafficTarget: v1beta1.TrafficTarget{
-				Subroute:           "one",
+				Subroute:          "one",
 				ConfigurationName: goodConfig.Name,
 				RevisionName:      goodOldRev.Name,
 				Percent:           49,
@@ -652,7 +652,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 			Protocol: net.ProtocolHTTP1,
 		}, {
 			TrafficTarget: v1beta1.TrafficTarget{
-				Subroute:           "two",
+				Subroute:          "two",
 				ConfigurationName: goodConfig.Name,
 				RevisionName:      goodNewRev.Name,
 				Percent:           50,
@@ -661,7 +661,7 @@ func TestBuildTrafficConfiguration_Consolidated(t *testing.T) {
 			Protocol: net.ProtocolH2C,
 		}, {
 			TrafficTarget: v1beta1.TrafficTarget{
-				Subroute:           "also-two",
+				Subroute:          "also-two",
 				ConfigurationName: goodConfig.Name,
 				RevisionName:      goodNewRev.Name,
 				Percent:           1,
@@ -845,7 +845,7 @@ func TestBuildTrafficConfiguration_Preliminary(t *testing.T) {
 				Protocol: net.ProtocolHTTP1,
 			}, {
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "beta",
+					Subroute:          "beta",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodNewRev.Name,
 				},
@@ -853,7 +853,7 @@ func TestBuildTrafficConfiguration_Preliminary(t *testing.T) {
 				Protocol: net.ProtocolH2C,
 			}, {
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "alpha",
+					Subroute:          "alpha",
 					ConfigurationName: niceConfig.Name,
 					RevisionName:      niceNewRev.Name,
 				},
@@ -862,7 +862,7 @@ func TestBuildTrafficConfiguration_Preliminary(t *testing.T) {
 			}},
 			"beta": {{
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "beta",
+					Subroute:          "beta",
 					ConfigurationName: goodConfig.Name,
 					RevisionName:      goodNewRev.Name,
 					Percent:           100,
@@ -872,7 +872,7 @@ func TestBuildTrafficConfiguration_Preliminary(t *testing.T) {
 			}},
 			"alpha": {{
 				TrafficTarget: v1beta1.TrafficTarget{
-					Subroute:           "alpha",
+					Subroute:          "alpha",
 					ConfigurationName: niceConfig.Name,
 					RevisionName:      niceNewRev.Name,
 					Percent:           100,
@@ -891,7 +891,7 @@ func TestBuildTrafficConfiguration_Preliminary(t *testing.T) {
 			Protocol: net.ProtocolHTTP1,
 		}, {
 			TrafficTarget: v1beta1.TrafficTarget{
-				Subroute:           "beta",
+				Subroute:          "beta",
 				ConfigurationName: goodConfig.Name,
 				RevisionName:      goodNewRev.Name,
 			},
@@ -899,7 +899,7 @@ func TestBuildTrafficConfiguration_Preliminary(t *testing.T) {
 			Protocol: net.ProtocolH2C,
 		}, {
 			TrafficTarget: v1beta1.TrafficTarget{
-				Subroute:           "alpha",
+				Subroute:          "alpha",
 				ConfigurationName: niceConfig.Name,
 				RevisionName:      niceNewRev.Name,
 			},
@@ -1221,7 +1221,7 @@ func testConfig(name string) *v1alpha1.Configuration {
 			DeprecatedGeneration: 1,
 			RevisionTemplate: v1alpha1.RevisionTemplateSpec{
 				Spec: v1alpha1.RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: "test-image",
 					},
 				},
@@ -1312,7 +1312,7 @@ func getTestReadyConfig(name string) (*v1alpha1.Configuration, *v1alpha1.Revisio
 	})
 
 	// rev1 will use http1, rev2 will use h2c
-	config.Spec.RevisionTemplate.Spec.Container.Ports = []corev1.ContainerPort{{Name: "h2c"}}
+	config.Spec.RevisionTemplate.Spec.DeprecatedContainer.Ports = []corev1.ContainerPort{{Name: "h2c"}}
 
 	rev2 := testRevForConfig(config, name+"-revision-2")
 	rev2.Status.MarkResourcesAvailable()

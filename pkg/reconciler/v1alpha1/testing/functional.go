@@ -86,14 +86,17 @@ func WithSucceededFalse(reason, message string) BuildOption {
 type ServiceOption func(*v1alpha1.Service)
 
 var (
+	timeoutSeconds = int64(60)
 	// configSpec is the spec used for the different styles of Service rollout.
 	configSpec = v1alpha1.ConfigurationSpec{
 		RevisionTemplate: v1alpha1.RevisionTemplateSpec{
 			Spec: v1alpha1.RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image: "busybox",
 				},
-				TimeoutSeconds: 60,
+				RevisionSpec: v1beta1.RevisionSpec{
+					TimeoutSeconds: &timeoutSeconds,
+				},
 			},
 		},
 	}
@@ -138,7 +141,12 @@ func WithServiceLabel(key, value string) ServiceOption {
 // WithResourceRequirements attaches resource requirements to the service
 func WithResourceRequirements(resourceRequirements corev1.ResourceRequirements) ServiceOption {
 	return func(svc *v1alpha1.Service) {
-		svc.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Resources = resourceRequirements
+		rt := &svc.Spec.RunLatest.Configuration.RevisionTemplate.Spec
+		c := rt.DeprecatedContainer
+		if c == nil {
+			c = &rt.Containers[0]
+		}
+		c.Resources = resourceRequirements
 	}
 }
 
@@ -147,7 +155,11 @@ func WithVolume(name, mountPath string, volumeSource corev1.VolumeSource) Servic
 	return func(svc *v1alpha1.Service) {
 		rt := &svc.Spec.RunLatest.Configuration.RevisionTemplate.Spec
 
-		rt.Container.VolumeMounts = []corev1.VolumeMount{{
+		c := rt.DeprecatedContainer
+		if c == nil {
+			c = &rt.Containers[0]
+		}
+		c.VolumeMounts = []corev1.VolumeMount{{
 			Name:      name,
 			MountPath: mountPath,
 		}}
@@ -169,7 +181,7 @@ func WithConfigAnnotations(annotations map[string]string) ServiceOption {
 // WithRevisionTimeoutSeconds sets revision timeout
 func WithRevisionTimeoutSeconds(revisionTimeoutSeconds int64) ServiceOption {
 	return func(service *v1alpha1.Service) {
-		service.Spec.RunLatest.Configuration.RevisionTemplate.Spec.TimeoutSeconds = revisionTimeoutSeconds
+		service.Spec.RunLatest.Configuration.RevisionTemplate.Spec.TimeoutSeconds = &revisionTimeoutSeconds
 	}
 }
 
@@ -881,9 +893,9 @@ func WithKPAClass(pa *autoscalingv1alpha1.PodAutoscaler) {
 
 // WithContainerConcurrency returns a PodAutoscalerOption which sets
 // the PodAutoscaler containerConcurrency to the provided value.
-func WithContainerConcurrency(cc int32) PodAutoscalerOption {
+func WithContainerConcurrency(cc v1beta1.RevisionContainerConcurrencyType) PodAutoscalerOption {
 	return func(pa *autoscalingv1alpha1.PodAutoscaler) {
-		pa.Spec.ContainerConcurrency = v1alpha1.RevisionContainerConcurrencyType(cc)
+		pa.Spec.ContainerConcurrency = cc
 	}
 }
 
@@ -959,16 +971,14 @@ type PodOption func(*corev1.Pod)
 // include a container named accordingly to fail with the given state.
 func WithFailingContainer(name string, exitCode int, message string) PodOption {
 	return func(pod *corev1.Pod) {
-		pod.Status.ContainerStatuses = []corev1.ContainerStatus{
-			{
-				Name: name,
-				LastTerminationState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: int32(exitCode),
-						Message:  message,
-					},
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{{
+			Name: name,
+			LastTerminationState: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{
+					ExitCode: int32(exitCode),
+					Message:  message,
 				},
 			},
-		}
+		}}
 	}
 }
