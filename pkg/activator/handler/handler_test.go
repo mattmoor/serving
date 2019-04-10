@@ -30,6 +30,7 @@ import (
 	"github.com/knative/serving/pkg/activator/util"
 	"github.com/knative/serving/pkg/apis/serving"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/network"
 	"github.com/knative/serving/pkg/queue"
 	corev1 "k8s.io/api/core/v1"
@@ -62,7 +63,12 @@ var stubRevisionGetter = func(revID activator.RevisionID) (*v1alpha1.Revision, e
 				serving.ServiceLabelKey:       "service-" + revID.Name,
 			},
 		},
-		Spec: v1alpha1.RevisionSpec{ContainerConcurrency: 1}}
+		Spec: v1alpha1.RevisionSpec{
+			RevisionSpec: v1beta1.RevisionSpec{
+				ContainerConcurrency: 1,
+			},
+		},
+	}
 	return revision, nil
 }
 

@@ -26,10 +26,10 @@ import (
 	"github.com/knative/pkg/apis/duck"
 	"github.com/knative/pkg/configmap"
 	ctrl "github.com/knative/pkg/controller"
-	"github.com/knative/pkg/ptr"
 	"github.com/knative/pkg/system"
 	"github.com/knative/serving/pkg/apis/serving"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/pkg/autoscaler"
 	fakeclientset "github.com/knative/serving/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/serving/pkg/client/informers/externalversions"
@@ -69,6 +69,7 @@ const (
 )
 
 func getTestRevision() *v1alpha1.Revision {
+	ts := int64(60)
 	return &v1alpha1.Revision{
 		ObjectMeta: metav1.ObjectMeta{
 			SelfLink:  "/apis/serving/v1alpha1/namespaces/test/revisions/test-rev",
@@ -111,7 +112,9 @@ func getTestRevision() *v1alpha1.Revision {
 				TerminationMessagePath: "/dev/null",
 			},
 			DeprecatedConcurrencyModel: v1alpha1.RevisionRequestConcurrencyModelMulti,
-			TimeoutSeconds:             ptr.Int64(60),
+			RevisionSpec: v1beta1.RevisionSpec{
+				TimeoutSeconds: &ts,
+			},
 		},
 	}
 }

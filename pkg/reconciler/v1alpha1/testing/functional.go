@@ -95,7 +95,9 @@ var (
 				Container: &corev1.Container{
 					Image: "busybox",
 				},
-				TimeoutSeconds: ptr.Int64(60),
+				RevisionSpec: v1beta1.RevisionSpec{
+					TimeoutSeconds: ptr.Int64(60),
+				},
 			},
 		},
 	}
@@ -897,7 +899,7 @@ func WithKPAClass(pa *autoscalingv1alpha1.PodAutoscaler) {
 
 // WithContainerConcurrency returns a PodAutoscalerOption which sets
 // the PodAutoscaler containerConcurrency to the provided value.
-func WithContainerConcurrency(cc v1alpha1.RevisionContainerConcurrencyType) PodAutoscalerOption {
+func WithContainerConcurrency(cc v1beta1.RevisionContainerConcurrencyType) PodAutoscalerOption {
 	return func(pa *autoscalingv1alpha1.PodAutoscaler) {
 		pa.Spec.ContainerConcurrency = cc
 	}
@@ -975,17 +977,15 @@ type PodOption func(*corev1.Pod)
 // include a container named accordingly to fail with the given state.
 func WithFailingContainer(name string, exitCode int, message string) PodOption {
 	return func(pod *corev1.Pod) {
-		pod.Status.ContainerStatuses = []corev1.ContainerStatus{
-			{
-				Name: name,
-				LastTerminationState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: int32(exitCode),
-						Message:  message,
-					},
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{{
+			Name: name,
+			LastTerminationState: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{
+					ExitCode: int32(exitCode),
+					Message:  message,
 				},
 			},
-		}
+		}}
 	}
 }
 

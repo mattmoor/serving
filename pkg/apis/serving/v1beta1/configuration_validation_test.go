@@ -41,7 +41,7 @@ func TestConfigurationValidation(t *testing.T) {
 			Spec: ConfigurationSpec{
 				Template: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						PodSpec: corev1.PodSpec{
+						PodSpec: PodSpec{
 							Containers: []corev1.Container{{
 								Image: "busybox",
 							}},
@@ -60,7 +60,7 @@ func TestConfigurationValidation(t *testing.T) {
 			Spec: ConfigurationSpec{
 				Template: RevisionTemplateSpec{
 					Spec: RevisionSpec{
-						PodSpec: corev1.PodSpec{
+						PodSpec: PodSpec{
 							Containers: []corev1.Container{{
 								Image: "busybox",
 							}},

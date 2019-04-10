@@ -42,7 +42,7 @@ func TestRevisionValidation(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "busybox",
 					}},
@@ -57,7 +57,7 @@ func TestRevisionValidation(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "busybox",
 					}},
@@ -131,7 +131,7 @@ func TestRevisionSpecValidation(t *testing.T) {
 	}{{
 		name: "valid",
 		rs: &RevisionSpec{
-			PodSpec: corev1.PodSpec{
+			PodSpec: PodSpec{
 				Containers: []corev1.Container{{
 					Image: "helloworld",
 				}},
@@ -141,7 +141,7 @@ func TestRevisionSpecValidation(t *testing.T) {
 	}, {
 		name: "with volume (ok)",
 		rs: &RevisionSpec{
-			PodSpec: corev1.PodSpec{
+			PodSpec: PodSpec{
 				Containers: []corev1.Container{{
 					Image: "helloworld",
 					VolumeMounts: []corev1.VolumeMount{{
@@ -165,7 +165,7 @@ func TestRevisionSpecValidation(t *testing.T) {
 		// }, {
 		// 	name: "with volume name collision",
 		// 	rs: &RevisionSpec{
-		// 		PodSpec: corev1.PodSpec{
+		// 		PodSpec: PodSpec{
 		// 			Containers: []corev1.Container{{
 		// 				Image: "helloworld",
 		// 				VolumeMounts: []corev1.VolumeMount{{
@@ -196,7 +196,7 @@ func TestRevisionSpecValidation(t *testing.T) {
 		// }, {
 		// 	name: "bad pod spec",
 		// 	rs: &RevisionSpec{
-		// 		PodSpec: corev1.PodSpec{
+		// 		PodSpec: PodSpec{
 		// 			Containers: []corev1.Container{{
 		// 				Name:  "steve",
 		// 				Image: "helloworld",
@@ -207,7 +207,7 @@ func TestRevisionSpecValidation(t *testing.T) {
 	}, {
 		name: "exceed max timeout",
 		rs: &RevisionSpec{
-			PodSpec: corev1.PodSpec{
+			PodSpec: PodSpec{
 				Containers: []corev1.Container{{
 					Image: "helloworld",
 				}},
@@ -220,7 +220,7 @@ func TestRevisionSpecValidation(t *testing.T) {
 	}, {
 		name: "negative timeout",
 		rs: &RevisionSpec{
-			PodSpec: corev1.PodSpec{
+			PodSpec: PodSpec{
 				Containers: []corev1.Container{{
 					Image: "helloworld",
 				}},
@@ -256,7 +256,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -268,7 +268,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -283,7 +283,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
@@ -299,7 +299,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
@@ -325,7 +325,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -337,7 +337,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "busybox",
 					}},
@@ -359,7 +359,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -372,7 +372,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -395,7 +395,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -408,7 +408,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -430,7 +430,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "helloworld",
 					}},
@@ -443,7 +443,7 @@ func TestImmutableFields(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "busybox",
 					}},

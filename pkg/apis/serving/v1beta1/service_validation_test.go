@@ -32,7 +32,7 @@ func TestServiceValidation(t *testing.T) {
 	goodConfigSpec := ConfigurationSpec{
 		Template: RevisionTemplateSpec{
 			Spec: RevisionSpec{
-				PodSpec: corev1.PodSpec{
+				PodSpec: PodSpec{
 					Containers: []corev1.Container{{
 						Image: "busybox",
 					}},
@@ -136,7 +136,7 @@ func TestServiceValidation(t *testing.T) {
 				ConfigurationSpec: ConfigurationSpec{
 					Template: RevisionTemplateSpec{
 						Spec: RevisionSpec{
-							PodSpec: corev1.PodSpec{
+							PodSpec: PodSpec{
 								Containers: []corev1.Container{{
 									Image: "busybox",
 								}},
