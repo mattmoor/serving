@@ -96,7 +96,16 @@ func (in *ConfigurationSpec) DeepCopyInto(out *ConfigurationSpec) {
 		*out = new(RawExtension)
 		(*in).DeepCopyInto(*out)
 	}
-	in.RevisionTemplate.DeepCopyInto(&out.RevisionTemplate)
+	if in.DeprecatedRevisionTemplate != nil {
+		in, out := &in.DeprecatedRevisionTemplate, &out.DeprecatedRevisionTemplate
+		*out = new(RevisionTemplateSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Template != nil {
+		in, out := &in.Template, &out.Template
+		*out = new(RevisionTemplateSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

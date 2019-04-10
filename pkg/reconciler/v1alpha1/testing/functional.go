@@ -89,7 +89,7 @@ var (
 	timeoutSeconds = int64(60)
 	// configSpec is the spec used for the different styles of Service rollout.
 	configSpec = v1alpha1.ConfigurationSpec{
-		RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+		DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 			Spec: v1alpha1.RevisionSpec{
 				DeprecatedContainer: &corev1.Container{
 					Image: "busybox",
@@ -112,7 +112,7 @@ func WithServiceDeletionTimestamp(r *v1alpha1.Service) {
 func WithRunLatestRollout(s *v1alpha1.Service) {
 	s.Spec = v1alpha1.ServiceSpec{
 		RunLatest: &v1alpha1.RunLatestType{
-			Configuration: configSpec,
+			Configuration: *configSpec.DeepCopy(),
 		},
 	}
 }
@@ -141,7 +141,7 @@ func WithServiceLabel(key, value string) ServiceOption {
 // WithResourceRequirements attaches resource requirements to the service
 func WithResourceRequirements(resourceRequirements corev1.ResourceRequirements) ServiceOption {
 	return func(svc *v1alpha1.Service) {
-		rt := &svc.Spec.RunLatest.Configuration.RevisionTemplate.Spec
+		rt := &svc.Spec.RunLatest.Configuration.GetTemplate().Spec
 		c := rt.DeprecatedContainer
 		if c == nil {
 			c = &rt.Containers[0]
@@ -153,7 +153,7 @@ func WithResourceRequirements(resourceRequirements corev1.ResourceRequirements) 
 // WithVolume adds a volume to the service
 func WithVolume(name, mountPath string, volumeSource corev1.VolumeSource) ServiceOption {
 	return func(svc *v1alpha1.Service) {
-		rt := &svc.Spec.RunLatest.Configuration.RevisionTemplate.Spec
+		rt := &svc.Spec.RunLatest.Configuration.GetTemplate().Spec
 
 		c := rt.DeprecatedContainer
 		if c == nil {
@@ -174,14 +174,14 @@ func WithVolume(name, mountPath string, volumeSource corev1.VolumeSource) Servic
 // WithConfigAnnotations assigns config annotations to a service
 func WithConfigAnnotations(annotations map[string]string) ServiceOption {
 	return func(service *v1alpha1.Service) {
-		service.Spec.RunLatest.Configuration.RevisionTemplate.ObjectMeta.Annotations = annotations
+		service.Spec.RunLatest.Configuration.GetTemplate().ObjectMeta.Annotations = annotations
 	}
 }
 
 // WithRevisionTimeoutSeconds sets revision timeout
 func WithRevisionTimeoutSeconds(revisionTimeoutSeconds int64) ServiceOption {
 	return func(service *v1alpha1.Service) {
-		service.Spec.RunLatest.Configuration.RevisionTemplate.Spec.TimeoutSeconds = &revisionTimeoutSeconds
+		service.Spec.RunLatest.Configuration.GetTemplate().Spec.TimeoutSeconds = &revisionTimeoutSeconds
 	}
 }
 
@@ -199,7 +199,7 @@ func MarkRouteNotOwned(service *v1alpha1.Service) {
 // which is pinned to the named revision.
 // Deprecated, since PinnedType is deprecated.
 func WithPinnedRollout(name string) ServiceOption {
-	return WithPinnedRolloutConfigSpec(name, configSpec)
+	return WithPinnedRolloutConfigSpec(name, *configSpec.DeepCopy())
 }
 
 // WithPinnedRolloutConfigSpec WithPinnedRollout2
@@ -217,7 +217,7 @@ func WithPinnedRolloutConfigSpec(name string, config v1alpha1.ConfigurationSpec)
 // WithReleaseRolloutAndPercentage configures the Service to use a "release" rollout,
 // which spans the provided revisions.
 func WithReleaseRolloutAndPercentage(percentage int, names ...string) ServiceOption {
-	return WithReleaseRolloutAndPercentageConfigSpec(percentage, configSpec, names...)
+	return WithReleaseRolloutAndPercentageConfigSpec(percentage, *configSpec.DeepCopy(), names...)
 }
 
 // WithReleaseRolloutAndPercentageConfigSpec configures the Service to use a "release" rollout,
@@ -254,7 +254,7 @@ func WithReleaseRollout(names ...string) ServiceOption {
 		s.Spec = v1alpha1.ServiceSpec{
 			Release: &v1alpha1.ReleaseType{
 				Revisions:     names,
-				Configuration: configSpec,
+				Configuration: *configSpec.DeepCopy(),
 			},
 		}
 	}
@@ -588,7 +588,7 @@ func WithConfigOwnersRemoved(cfg *v1alpha1.Configuration) {
 // WithConfigConcurrencyModel sets the given Configuration's concurrency model.
 func WithConfigConcurrencyModel(ss v1alpha1.RevisionRequestConcurrencyModelType) ConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
-		cfg.Spec.RevisionTemplate.Spec.DeprecatedConcurrencyModel = ss
+		cfg.Spec.GetTemplate().Spec.DeprecatedConcurrencyModel = ss
 	}
 }
 

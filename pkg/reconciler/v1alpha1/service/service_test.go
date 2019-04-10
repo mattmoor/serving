@@ -18,6 +18,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
@@ -1055,9 +1056,15 @@ func config(name, namespace string, so ServiceOption, co ...ConfigOption) *v1alp
 	if err != nil {
 		panic(fmt.Sprintf("MakeConfiguration() = %v", err))
 	}
+
+	log.Printf("Before: %#v", cfg.Spec.GetTemplate())
+
 	for _, opt := range co {
 		opt(cfg)
 	}
+
+	log.Printf("GOT: %#v", cfg.Spec.GetTemplate())
+
 	return cfg
 }
 

@@ -63,7 +63,7 @@ func getTestConfiguration() *v1alpha1.Configuration {
 		Spec: v1alpha1.ConfigurationSpec{
 			// TODO(grantr): This is a workaround for generation initialization
 			DeprecatedGeneration: 1,
-			RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 				Spec: v1alpha1.RevisionSpec{
 					RevisionSpec: v1beta1.RevisionSpec{
 						PodSpec: corev1.PodSpec{

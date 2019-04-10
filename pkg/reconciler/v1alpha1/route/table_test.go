@@ -1622,7 +1622,7 @@ func cfg(namespace, name string, co ...ConfigOption) *v1alpha1.Configuration {
 		},
 		Spec: v1alpha1.ConfigurationSpec{
 			DeprecatedGeneration: 1,
-			RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 				Spec: v1alpha1.RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Image: "busybox",

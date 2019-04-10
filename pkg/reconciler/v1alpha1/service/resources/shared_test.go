@@ -62,7 +62,7 @@ func expectOwnerReferencesSetCorrectly(t *testing.T, ownerRefs []metav1.OwnerRef
 
 func createConfiguration(containerName string) v1alpha1.ConfigurationSpec {
 	return v1alpha1.ConfigurationSpec{
-		RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+		DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 			Spec: v1alpha1.RevisionSpec{
 				DeprecatedContainer: &corev1.Container{
 					Name: containerName,

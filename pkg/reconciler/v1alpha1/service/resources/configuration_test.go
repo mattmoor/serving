@@ -31,7 +31,7 @@ func TestRunLatest(t *testing.T) {
 	if got, want := c.Namespace, testServiceNamespace; got != want {
 		t.Errorf("expected %q for service namespace got %q", want, got)
 	}
-	if got, want := c.Spec.RevisionTemplate.GetContainer().Name, testContainerNameRunLatest; got != want {
+	if got, want := c.Spec.GetTemplate().GetContainer().Name, testContainerNameRunLatest; got != want {
 		t.Errorf("expected %q for container name got %q", want, got)
 	}
 	expectOwnerReferencesSetCorrectly(t, c.OwnerReferences)
@@ -56,7 +56,7 @@ func TestPinned(t *testing.T) {
 	if got, want := c.Namespace, testServiceNamespace; got != want {
 		t.Errorf("expected %q for service namespace got %q", want, got)
 	}
-	if got, want := c.Spec.RevisionTemplate.GetContainer().Name, testContainerNamePinned; got != want {
+	if got, want := c.Spec.GetTemplate().GetContainer().Name, testContainerNamePinned; got != want {
 		t.Errorf("expected %q for container name got %q", want, got)
 	}
 	expectOwnerReferencesSetCorrectly(t, c.OwnerReferences)
@@ -81,7 +81,7 @@ func TestRelease(t *testing.T) {
 	if got, want := c.Namespace, testServiceNamespace; got != want {
 		t.Errorf("expected %q for service namespace got %q", want, got)
 	}
-	if got, want := c.Spec.RevisionTemplate.GetContainer().Name, testContainerNameRelease; got != want {
+	if got, want := c.Spec.GetTemplate().GetContainer().Name, testContainerNameRelease; got != want {
 		t.Errorf("expected %q for container name got %q", want, got)
 	}
 	expectOwnerReferencesSetCorrectly(t, c.OwnerReferences)

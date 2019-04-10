@@ -37,7 +37,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 	}{{
 		name: "valid",
 		c: &ConfigurationSpec{
-			RevisionTemplate: RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 				Spec: RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
@@ -49,7 +49,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 	}, {
 		name: "propagate revision failures",
 		c: &ConfigurationSpec{
-			RevisionTemplate: RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 				Spec: RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Name:  "stuart",
@@ -69,7 +69,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 					}},
 				},
 			},
-			RevisionTemplate: RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 				Spec: RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
@@ -94,7 +94,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 					},
 				},
 			},
-			RevisionTemplate: RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 				Spec: RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
@@ -115,7 +115,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 					},
 				},
 			},
-			RevisionTemplate: RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 				Spec: RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
@@ -130,7 +130,7 @@ func TestConfigurationSpecValidation(t *testing.T) {
 			Build: &RawExtension{
 				Raw: []byte(`"foo"`),
 			},
-			RevisionTemplate: RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 				Spec: RevisionSpec{
 					DeprecatedContainer: &corev1.Container{
 						Image: "hellworld",
@@ -163,7 +163,7 @@ func TestConfigurationValidation(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: ConfigurationSpec{
-				RevisionTemplate: RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 					Spec: RevisionSpec{
 						DeprecatedContainer: &corev1.Container{
 							Image: "hellworld",
@@ -180,7 +180,7 @@ func TestConfigurationValidation(t *testing.T) {
 				Name: "valid",
 			},
 			Spec: ConfigurationSpec{
-				RevisionTemplate: RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 					Spec: RevisionSpec{
 						DeprecatedContainer: &corev1.Container{
 							Name:  "stuart",

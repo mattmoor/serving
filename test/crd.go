@@ -124,26 +124,28 @@ func ConfigurationSpec(imagePath string, options *Options) *v1alpha1.Configurati
 	}
 
 	spec := &v1alpha1.ConfigurationSpec{
-		RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+		DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 			Spec: v1alpha1.RevisionSpec{
-				Container: corev1.Container{
+				DeprecatedContainer: &corev1.Container{
 					Image:           imagePath,
 					Resources:       options.ContainerResources,
 					ReadinessProbe:  options.ReadinessProbe,
 					Ports:           options.ContainerPorts,
 					SecurityContext: options.SecurityContext,
 				},
-				ContainerConcurrency: v1alpha1.RevisionContainerConcurrencyType(options.ContainerConcurrency),
+				RevisionSpec: v1beta1.RevisionSpec{
+					ContainerConcurrency: v1beta1.RevisionContainerConcurrencyType(options.ContainerConcurrency),
+				},
 			},
 		},
 	}
 
 	if options.RevisionTimeoutSeconds > 0 {
-		spec.RevisionTemplate.Spec.TimeoutSeconds = options.RevisionTimeoutSeconds
+		spec.GetTemplate().Spec.TimeoutSeconds = &options.RevisionTimeoutSeconds
 	}
 
 	if options.EnvVars != nil {
-		spec.RevisionTemplate.Spec.Container.Env = options.EnvVars
+		spec.GetTemplate().Spec.DeprecatedContainer.Env = options.EnvVars
 	}
 
 	return spec
@@ -160,7 +162,7 @@ func Configuration(namespace string, names ResourceNames, options *Options, fopt
 		Spec: *ConfigurationSpec(ptest.ImagePath(names.Image), options),
 	}
 	if options.ContainerPorts != nil && len(options.ContainerPorts) > 0 {
-		config.Spec.RevisionTemplate.Spec.Container.Ports = options.ContainerPorts
+		config.Spec.GetTemplate().Spec.DeprecatedContainer.Ports = options.ContainerPorts
 	}
 
 	for _, opt := range fopt {
@@ -181,9 +183,9 @@ func ConfigurationWithBuild(namespace string, names ResourceNames, build *v1alph
 		},
 		Spec: v1alpha1.ConfigurationSpec{
 			Build: build,
-			RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 				Spec: v1alpha1.RevisionSpec{
-					Container: corev1.Container{
+					DeprecatedContainer: &corev1.Container{
 						Image: ptest.ImagePath(names.Image),
 					},
 				},

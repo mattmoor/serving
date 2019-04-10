@@ -27,10 +27,11 @@ import (
 
 // MakeRevision creates a revision object from configuration and build reference.
 func MakeRevision(config *v1alpha1.Configuration, buildRef *corev1.ObjectReference) *v1alpha1.Revision {
+	template := config.Spec.GetTemplate()
 	// Start from the ObjectMeta/Spec inlined in the Configuration resources.
 	rev := &v1alpha1.Revision{
-		ObjectMeta: config.Spec.RevisionTemplate.ObjectMeta,
-		Spec:       config.Spec.RevisionTemplate.Spec,
+		ObjectMeta: template.ObjectMeta,
+		Spec:       template.Spec,
 	}
 	// Populate the Namespace and Name.
 	rev.Namespace = config.Namespace

@@ -51,5 +51,6 @@ func (cs *ConfigurationSpec) Validate(ctx context.Context) *apis.FieldError {
 		errs = errs.Also(apis.ErrInvalidValue(err, "build"))
 	}
 
-	return errs.Also(cs.RevisionTemplate.Validate(ctx).ViaField("revisionTemplate"))
+	// TODO(mattmoor): Check whether both are set.
+	return errs.Also(cs.GetTemplate().Validate(ctx).ViaField("revisionTemplate"))
 }

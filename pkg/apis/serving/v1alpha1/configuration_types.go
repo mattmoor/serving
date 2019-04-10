@@ -74,12 +74,17 @@ type ConfigurationSpec struct {
 	// +optional
 	Build *RawExtension `json:"build,omitempty"`
 
-	// RevisionTemplate holds the latest specification for the Revision to
+	// DeprecatedRevisionTemplate holds the latest specification for the Revision to
 	// be stamped out. If a Build specification is provided, then the
 	// RevisionTemplate's BuildName field will be populated with the name of
 	// the Build object created to produce the container for the Revision.
 	// +optional
-	RevisionTemplate RevisionTemplateSpec `json:"revisionTemplate"`
+	DeprecatedRevisionTemplate *RevisionTemplateSpec `json:"revisionTemplate,omitempty"`
+
+	// Template holds the latest specification for the Revision to
+	// be stamped out.
+	// +optional
+	Template *RevisionTemplateSpec `json:"template,omitempty"`
 }
 
 const (

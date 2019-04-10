@@ -27,6 +27,18 @@ func (r *Configuration) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("Configuration")
 }
 
+// GetTemplate returns a non-nil pointer to the RevisionTemplateSpec,
+// which may be a fresh copy if neither is set.
+func (cs *ConfigurationSpec) GetTemplate() *RevisionTemplateSpec {
+	if cs.DeprecatedRevisionTemplate != nil {
+		return cs.DeprecatedRevisionTemplate
+	}
+	if cs.Template != nil {
+		return cs.Template
+	}
+	return &RevisionTemplateSpec{}
+}
+
 // IsReady looks at the conditions to see if they are happy.
 func (cs *ConfigurationStatus) IsReady() bool {
 	return confCondSet.Manage(cs).IsHappy()

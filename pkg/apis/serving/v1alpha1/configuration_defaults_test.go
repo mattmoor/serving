@@ -25,7 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	"github.com/knative/serving/pkg/apis/config"
 	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
@@ -50,25 +49,12 @@ func TestConfigurationDefaulting(t *testing.T) {
 	}{{
 		name: "empty",
 		in:   &Configuration{},
-		want: &Configuration{
-			Spec: ConfigurationSpec{
-				RevisionTemplate: RevisionTemplateSpec{
-					Spec: RevisionSpec{
-						RevisionSpec: v1beta1.RevisionSpec{
-							TimeoutSeconds: intptr(config.DefaultRevisionTimeoutSeconds),
-						},
-						DeprecatedContainer: &corev1.Container{
-							Resources: defaultResources,
-						},
-					},
-				},
-			},
-		},
+		want: &Configuration{},
 	}, {
 		name: "no overwrite values",
 		in: &Configuration{
 			Spec: ConfigurationSpec{
-				RevisionTemplate: RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 					Spec: RevisionSpec{
 						RevisionSpec: v1beta1.RevisionSpec{
 							ContainerConcurrency: 1,
@@ -83,7 +69,7 @@ func TestConfigurationDefaulting(t *testing.T) {
 		},
 		want: &Configuration{
 			Spec: ConfigurationSpec{
-				RevisionTemplate: RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 					Spec: RevisionSpec{
 						RevisionSpec: v1beta1.RevisionSpec{
 							ContainerConcurrency: 1,

@@ -42,7 +42,7 @@ func TestMakeRevisions(t *testing.T) {
 				Generation: 10,
 			},
 			Spec: v1alpha1.ConfigurationSpec{
-				RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 					Spec: v1alpha1.RevisionSpec{
 						DeprecatedContainer: &corev1.Container{
 							Image: "busybox",
@@ -90,7 +90,7 @@ func TestMakeRevisions(t *testing.T) {
 						Image: "busybox",
 					}},
 				}},
-				RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 					Spec: v1alpha1.RevisionSpec{
 						DeprecatedContainer: &corev1.Container{
 							Image: "busybox",
@@ -143,7 +143,7 @@ func TestMakeRevisions(t *testing.T) {
 				Generation: 100,
 			},
 			Spec: v1alpha1.ConfigurationSpec{
-				RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							"foo": "bar",
@@ -194,7 +194,7 @@ func TestMakeRevisions(t *testing.T) {
 				Generation: 100,
 			},
 			Spec: v1alpha1.ConfigurationSpec{
-				RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+				DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
 							"foo": "bar",

@@ -538,7 +538,7 @@ func cfg(name, namespace string, generation int64, co ...ConfigOption) *v1alpha1
 		},
 		Spec: v1alpha1.ConfigurationSpec{
 			DeprecatedGeneration: generation,
-			RevisionTemplate: v1alpha1.RevisionTemplateSpec{
+			DeprecatedRevisionTemplate: &v1alpha1.RevisionTemplateSpec{
 				Spec: revisionSpec,
 			},
 		},

@@ -54,14 +54,18 @@ func TestServiceDefaulting(t *testing.T) {
 		name: "run latest",
 		in: &Service{
 			Spec: ServiceSpec{
-				RunLatest: &RunLatestType{},
+				RunLatest: &RunLatestType{
+					Configuration: ConfigurationSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{},
+					},
+				},
 			},
 		},
 		want: &Service{
 			Spec: ServiceSpec{
 				RunLatest: &RunLatestType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									TimeoutSeconds: intptr(config.DefaultRevisionTimeoutSeconds),
@@ -81,7 +85,7 @@ func TestServiceDefaulting(t *testing.T) {
 			Spec: ServiceSpec{
 				RunLatest: &RunLatestType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									ContainerConcurrency: 1,
@@ -97,7 +101,7 @@ func TestServiceDefaulting(t *testing.T) {
 			Spec: ServiceSpec{
 				RunLatest: &RunLatestType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									ContainerConcurrency: 1,
@@ -116,14 +120,18 @@ func TestServiceDefaulting(t *testing.T) {
 		name: "pinned",
 		in: &Service{
 			Spec: ServiceSpec{
-				DeprecatedPinned: &PinnedType{},
+				DeprecatedPinned: &PinnedType{
+					Configuration: ConfigurationSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{},
+					},
+				},
 			},
 		},
 		want: &Service{
 			Spec: ServiceSpec{
 				DeprecatedPinned: &PinnedType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									TimeoutSeconds: intptr(config.DefaultRevisionTimeoutSeconds),
@@ -143,7 +151,7 @@ func TestServiceDefaulting(t *testing.T) {
 			Spec: ServiceSpec{
 				DeprecatedPinned: &PinnedType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									ContainerConcurrency: 1,
@@ -159,7 +167,7 @@ func TestServiceDefaulting(t *testing.T) {
 			Spec: ServiceSpec{
 				DeprecatedPinned: &PinnedType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									ContainerConcurrency: 1,
@@ -178,14 +186,18 @@ func TestServiceDefaulting(t *testing.T) {
 		name: "release",
 		in: &Service{
 			Spec: ServiceSpec{
-				Release: &ReleaseType{},
+				Release: &ReleaseType{
+					Configuration: ConfigurationSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{},
+					},
+				},
 			},
 		},
 		want: &Service{
 			Spec: ServiceSpec{
 				Release: &ReleaseType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									TimeoutSeconds: intptr(config.DefaultRevisionTimeoutSeconds),
@@ -205,7 +217,7 @@ func TestServiceDefaulting(t *testing.T) {
 			Spec: ServiceSpec{
 				Release: &ReleaseType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									ContainerConcurrency: 1,
@@ -221,7 +233,7 @@ func TestServiceDefaulting(t *testing.T) {
 			Spec: ServiceSpec{
 				Release: &ReleaseType{
 					Configuration: ConfigurationSpec{
-						RevisionTemplate: RevisionTemplateSpec{
+						DeprecatedRevisionTemplate: &RevisionTemplateSpec{
 							Spec: RevisionSpec{
 								RevisionSpec: v1beta1.RevisionSpec{
 									ContainerConcurrency: 1,
