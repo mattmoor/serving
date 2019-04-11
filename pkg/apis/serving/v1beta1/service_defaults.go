@@ -33,5 +33,5 @@ func (s *Service) SetDefaults(ctx context.Context) {
 // SetDefaults implements apis.Defaultable
 func (ss *ServiceSpec) SetDefaults(ctx context.Context) {
 	ss.ConfigurationSpec.SetDefaults(ctx)
-	ss.RouteSpec.SetDefaults(withDefaultConfigurationName(ctx))
+	ss.RouteSpec.SetDefaults(WithDefaultConfigurationName(ctx))
 }

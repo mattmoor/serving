@@ -155,7 +155,7 @@ func TestTrafficTargetValidation(t *testing.T) {
 			ConfigurationName: "blah",
 			Percent:           37,
 		},
-		wc:   withDefaultConfigurationName,
+		wc:   WithDefaultConfigurationName,
 		want: apis.ErrDisallowedFields("configurationName"),
 	}, {
 		name: "valid with only default configurationName",
@@ -163,7 +163,7 @@ func TestTrafficTargetValidation(t *testing.T) {
 			Percent: 37,
 		},
 		wc: func(ctx context.Context) context.Context {
-			return withDefaultConfigurationName(apis.WithinSpec(ctx))
+			return WithDefaultConfigurationName(apis.WithinSpec(ctx))
 		},
 		want: nil,
 	}, {
@@ -173,7 +173,7 @@ func TestTrafficTargetValidation(t *testing.T) {
 			Percent:        37,
 		},
 		wc: func(ctx context.Context) context.Context {
-			return withDefaultConfigurationName(apis.WithinSpec(ctx))
+			return WithDefaultConfigurationName(apis.WithinSpec(ctx))
 		},
 		want: nil,
 	}, {
@@ -183,7 +183,7 @@ func TestTrafficTargetValidation(t *testing.T) {
 			Percent:        37,
 		},
 		wc: func(ctx context.Context) context.Context {
-			return withDefaultConfigurationName(apis.WithinSpec(ctx))
+			return WithDefaultConfigurationName(apis.WithinSpec(ctx))
 		},
 		want: apis.ErrInvalidValue(false, "latestRevision"),
 	}, {
@@ -200,7 +200,7 @@ func TestTrafficTargetValidation(t *testing.T) {
 			RevisionName: "bar",
 			Percent:      12,
 		},
-		wc:   withDefaultConfigurationName,
+		wc:   WithDefaultConfigurationName,
 		want: nil,
 	}, {
 		name: "valid with no percent",

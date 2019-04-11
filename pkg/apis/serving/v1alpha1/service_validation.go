@@ -24,6 +24,8 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/knative/serving/pkg/apis/serving"
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 // Validate validates the fields belonging to Service
@@ -83,10 +85,34 @@ func (ss *ServiceSpec) Validate(ctx context.Context) *apis.FieldError {
 		errs = errs.Also(ss.DeprecatedPinned.Validate(ctx).ViaField("pinned"))
 	}
 
+	// Before checking ConfigurationSpec, check RouteSpec.
+	if len(set) > 0 && len(ss.RouteSpec.Traffic) > 0 {
+		errs = errs.Also(apis.ErrMultipleOneOf(
+			append([]string{"traffic"}, set...)...))
+	}
+
+	// TODO(mattmoor): This should simply be switched to Template since
+	// we will deprecate RevisionTemplate and disallow it via validation
+	// anyhow.
+	if ss.ConfigurationSpec.RevisionTemplate != nil {
+		set = append(set, "revisionTemplate")
+
+		// Disallow the use of deprecated fields within our inlined
+		// Configuration and Route specs.
+		ctx = apis.DisallowDeprecated(ctx)
+
+		errs = errs.Also(ss.ConfigurationSpec.Validate(ctx))
+		errs = errs.Also(ss.RouteSpec.Validate(
+			// Within the context of Service, the RouteSpec has a default
+			// configurationName.
+			v1beta1.WithDefaultConfigurationName(ctx)))
+	}
+
 	if len(set) > 1 {
 		errs = errs.Also(apis.ErrMultipleOneOf(set...))
 	} else if len(set) == 0 {
-		errs = errs.Also(apis.ErrMissingOneOf("runLatest", "release", "manual", "pinned"))
+		errs = errs.Also(apis.ErrMissingOneOf("runLatest", "release", "manual",
+			"pinned", "revisionTemplate"))
 	}
 	return errs
 }

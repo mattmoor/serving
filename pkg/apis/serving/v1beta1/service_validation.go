@@ -37,7 +37,7 @@ func (ss *ServiceSpec) Validate(ctx context.Context) *apis.FieldError {
 	return ss.ConfigurationSpec.Validate(ctx).Also(
 		// Within the context of Service, the RouteSpec has a default
 		// configurationName.
-		ss.RouteSpec.Validate(withDefaultConfigurationName(ctx)))
+		ss.RouteSpec.Validate(WithDefaultConfigurationName(ctx)))
 }
 
 // Validate implements apis.Validatable

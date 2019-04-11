@@ -92,7 +92,7 @@ func (tt *TrafficTarget) Validate(ctx context.Context) *apis.FieldError {
 	switch {
 	// When we have a default configurationName, we don't
 	// allow one to be specified.
-	case hasDefaultConfigurationName(ctx) && tt.ConfigurationName != "":
+	case HasDefaultConfigurationName(ctx) && tt.ConfigurationName != "":
 		errs = errs.Also(apis.ErrDisallowedFields("configurationName"))
 
 	// Both revisionName and configurationName are never allowed to
@@ -120,7 +120,7 @@ func (tt *TrafficTarget) Validate(ctx context.Context) *apis.FieldError {
 		}
 
 	// When we are using a default configurationName, it must be a valid name already.
-	case hasDefaultConfigurationName(ctx):
+	case HasDefaultConfigurationName(ctx):
 
 	// All other cases are missing one of revisionName or configurationName.
 	default:

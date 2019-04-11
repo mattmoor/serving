@@ -20,10 +20,10 @@ import "context"
 
 type hdcn struct{}
 
-func withDefaultConfigurationName(ctx context.Context) context.Context {
+func WithDefaultConfigurationName(ctx context.Context) context.Context {
 	return context.WithValue(ctx, hdcn{}, struct{}{})
 }
 
-func hasDefaultConfigurationName(ctx context.Context) bool {
+func HasDefaultConfigurationName(ctx context.Context) bool {
 	return ctx.Value(hdcn{}) != nil
 }

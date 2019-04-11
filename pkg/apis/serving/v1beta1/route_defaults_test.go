@@ -45,7 +45,7 @@ func TestRouteDefaulting(t *testing.T) {
 				}},
 			},
 		},
-		wc: withDefaultConfigurationName,
+		wc: WithDefaultConfigurationName,
 	}, {
 		name: "latest revision defaulting",
 		in: &Route{
