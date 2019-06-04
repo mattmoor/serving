@@ -30,6 +30,8 @@ import (
 	. "github.com/knative/pkg/configmap/testing"
 )
 
+var components = []string{"controller", "queueproxy", "webhook", "activator", "autoscaler"}
+
 func TestNewLogger(t *testing.T) {
 	logger, _ := NewLogger("", "")
 	if logger == nil {

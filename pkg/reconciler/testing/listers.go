@@ -17,9 +17,7 @@ limitations under the License.
 package testing
 
 import (
-	certmanager "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	certmanagerv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	certmanagerlisters "github.com/jetstack/cert-manager/pkg/client/listers/certmanager/v1alpha1"
 	cachingv1alpha1 "github.com/knative/caching/pkg/apis/caching/v1alpha1"
 	fakecachingclientset "github.com/knative/caching/pkg/client/clientset/versioned/fake"
 	cachinglisters "github.com/knative/caching/pkg/client/listers/caching/v1alpha1"
@@ -34,6 +32,7 @@ import (
 	kpalisters "github.com/knative/serving/pkg/client/listers/autoscaling/v1alpha1"
 	networkinglisters "github.com/knative/serving/pkg/client/listers/networking/v1alpha1"
 	servinglisters "github.com/knative/serving/pkg/client/listers/serving/v1alpha1"
+	certmanagerlisters "github.com/knative/serving/pkg/client/certmanager/listers/certmanager/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -172,7 +171,7 @@ func (l *Listers) GetKnCertificateLister() networkinglisters.CertificateLister {
 
 // GetCMCertificateLister gets lister for Cert Manager Certificate resource.
 func (l *Listers) GetCMCertificateLister() certmanagerlisters.CertificateLister {
-	return certmanagerlisters.NewCertificateLister(l.indexerFor(&certmanager.Certificate{}))
+	return certmanagerlisters.NewCertificateLister(l.indexerFor(&certmanagerv1alpha1.Certificate{}))
 }
 
 func (l *Listers) GetImageLister() cachinglisters.ImageLister {

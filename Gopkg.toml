@@ -8,6 +8,7 @@ required = [
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
+  "github.com/knative/pkg/codegen/cmd/injection-gen",
   "github.com/knative/caching/pkg/apis/caching",
   "github.com/knative/test-infra/scripts",
   "github.com/knative/test-infra/tools/dep-collector",
@@ -20,7 +21,9 @@ required = [
 [[override]]
   name = "github.com/knative/pkg"
   # HEAD as of 2919-05-28
-  revision = "15b1aa79be0b927a9e62d1738b03ef3efb2745f3"
+  # TODO(mattmoor): DO NOT SUBMIT
+  source = "github.com/mattmoor/pkg-1"
+  revision = "8fcd0aa7cce5bd7fbf3ba82534b436e6a4da7dcb"
 
 [[override]]
   name = "go.uber.org/zap"
@@ -29,7 +32,9 @@ required = [
 [[constraint]]
   name = "github.com/knative/caching"
   # HEAD as of 2019-04-09
-  revision = "afa9ee174c6f2072b12dbb4b3bf64be8ec7bc30b"
+  #TODO(mattmoor): DO NOT SUBMIT
+  source = "github.com/mattmoor/caching"
+  revision = "08d0d8da0c0b2550881eef598023f3a81c6bf591"
 
 [[constraint]]
   name = "github.com/google/go-containerregistry"
@@ -85,6 +90,11 @@ required = [
   go-tests = true
   unused-packages = true
   non-go = true
+
+[[prune.project]]
+  name = "github.com/knative/pkg"
+  unused-packages = false
+  non-go = false
 
 [[prune.project]]
   name = "k8s.io/code-generator"
