@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/knative/serving/pkg/apis/autoscaling"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -38,7 +38,7 @@ func TestMinScale(t *testing.T) {
 		Image:  "helloworld",
 	}
 
-	if _, err := test.CreateConfiguration(t, clients, names, &test.Options{}, func(cfg *v1alpha1.Configuration) {
+	if _, err := test.CreateConfiguration(t, clients, names, &test.Options{}, func(cfg *v1beta1.Configuration) {
 		if cfg.Spec.Template.Annotations == nil {
 			cfg.Spec.Template.Annotations = make(map[string]string)
 		}

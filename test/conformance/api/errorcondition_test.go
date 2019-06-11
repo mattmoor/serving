@@ -25,7 +25,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	ptest "github.com/knative/pkg/test"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,8 +62,8 @@ func TestContainerErrorMsg(t *testing.T) {
 	t.Log("When the imagepath is invalid, the Configuration should have error status.")
 
 	// Checking for "Container image not present in repository" scenario defined in error condition spec
-	err := test.WaitForConfigurationState(clients.ServingClient, names.Config, func(r *v1alpha1.Configuration) (bool, error) {
-		cond := r.Status.GetCondition(v1alpha1.ConfigurationConditionReady)
+	err := test.WaitForConfigurationState(clients.ServingClient, names.Config, func(r *v1beta1.Configuration) (bool, error) {
+		cond := r.Status.GetCondition(v1beta1.ConfigurationConditionReady)
 		if cond != nil && !cond.IsUnknown() {
 			if strings.Contains(cond.Message, manifestUnknown) && cond.IsFalse() {
 				return true, nil
@@ -85,8 +85,8 @@ func TestContainerErrorMsg(t *testing.T) {
 	}
 
 	t.Log("When the imagepath is invalid, the revision should have error status.")
-	err = test.WaitForRevisionState(clients.ServingClient, revisionName, func(r *v1alpha1.Revision) (bool, error) {
-		cond := r.Status.GetCondition(v1alpha1.RevisionConditionReady)
+	err = test.WaitForRevisionState(clients.ServingClient, revisionName, func(r *v1beta1.Revision) (bool, error) {
+		cond := r.Status.GetCondition(v1beta1.RevisionConditionReady)
 		if cond != nil {
 			if cond.Reason == containerMissing && strings.Contains(cond.Message, manifestUnknown) {
 				return true, nil
@@ -166,8 +166,8 @@ func TestContainerExitingMsg(t *testing.T) {
 
 			t.Log("When the containers keep crashing, the Configuration should have error status.")
 
-			err := test.WaitForConfigurationState(clients.ServingClient, names.Config, func(r *v1alpha1.Configuration) (bool, error) {
-				cond := r.Status.GetCondition(v1alpha1.ConfigurationConditionReady)
+			err := test.WaitForConfigurationState(clients.ServingClient, names.Config, func(r *v1beta1.Configuration) (bool, error) {
+				cond := r.Status.GetCondition(v1beta1.ConfigurationConditionReady)
 				if cond != nil && !cond.IsUnknown() {
 					if strings.Contains(cond.Message, errorLog) && cond.IsFalse() {
 						return true, nil
@@ -189,8 +189,8 @@ func TestContainerExitingMsg(t *testing.T) {
 			}
 
 			t.Log("When the containers keep crashing, the revision should have error status.")
-			err = test.WaitForRevisionState(clients.ServingClient, revisionName, func(r *v1alpha1.Revision) (bool, error) {
-				cond := r.Status.GetCondition(v1alpha1.RevisionConditionReady)
+			err = test.WaitForRevisionState(clients.ServingClient, revisionName, func(r *v1beta1.Revision) (bool, error) {
+				cond := r.Status.GetCondition(v1beta1.RevisionConditionReady)
 				if cond != nil {
 					if cond.Reason == exitCodeReason && strings.Contains(cond.Message, errorLog) {
 						return true, nil

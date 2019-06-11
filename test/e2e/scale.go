@@ -23,7 +23,7 @@ import (
 	"time"
 
 	pkgTest "github.com/knative/pkg/test"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	serviceresourcenames "github.com/knative/serving/pkg/reconciler/service/resources/names"
 	"github.com/knative/serving/test"
 	"github.com/pkg/errors"
@@ -124,7 +124,7 @@ func ScaleToWithin(t *testing.T, scale int, duration time.Duration, latencies La
 
 			t.Logf("Wait for %s to become ready.", names.Service)
 			var domain string
-			err = test.WaitForServiceState(clients.ServingClient, names.Service, func(s *v1alpha1.Service) (bool, error) {
+			err = test.WaitForServiceState(clients.ServingClient, names.Service, func(s *v1beta1.Service) (bool, error) {
 				if s.Status.URL == nil {
 					return false, nil
 				}

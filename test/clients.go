@@ -21,7 +21,8 @@ package test
 import (
 	"github.com/knative/pkg/test"
 	"github.com/knative/serving/pkg/client/clientset/versioned"
-	servingtyped "github.com/knative/serving/pkg/client/clientset/versioned/typed/serving/v1alpha1"
+	servingtypedold "github.com/knative/serving/pkg/client/clientset/versioned/typed/serving/v1alpha1"
+	servingtyped "github.com/knative/serving/pkg/client/clientset/versioned/typed/serving/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
@@ -42,6 +43,11 @@ type ServingClients struct {
 	Configs   servingtyped.ConfigurationInterface
 	Revisions servingtyped.RevisionInterface
 	Services  servingtyped.ServiceInterface
+
+	LegacyRoutes    servingtypedold.RouteInterface
+	LegacyConfigs   servingtypedold.ConfigurationInterface
+	LegacyRevisions servingtypedold.RevisionInterface
+	LegacyServices  servingtypedold.ServiceInterface
 }
 
 // NewClients instantiates and returns several clientsets required for making request to the
@@ -85,10 +91,14 @@ func newServingClients(cfg *rest.Config, namespace string) (*ServingClients, err
 	}
 
 	return &ServingClients{
-		Configs:   cs.ServingV1alpha1().Configurations(namespace),
-		Revisions: cs.ServingV1alpha1().Revisions(namespace),
-		Routes:    cs.ServingV1alpha1().Routes(namespace),
-		Services:  cs.ServingV1alpha1().Services(namespace),
+		Configs:         cs.ServingV1beta1().Configurations(namespace),
+		Revisions:       cs.ServingV1beta1().Revisions(namespace),
+		Routes:          cs.ServingV1beta1().Routes(namespace),
+		Services:        cs.ServingV1beta1().Services(namespace),
+		LegacyConfigs:   cs.ServingV1alpha1().Configurations(namespace),
+		LegacyRevisions: cs.ServingV1alpha1().Revisions(namespace),
+		LegacyRoutes:    cs.ServingV1alpha1().Routes(namespace),
+		LegacyServices:  cs.ServingV1alpha1().Services(namespace),
 	}, nil
 }
 

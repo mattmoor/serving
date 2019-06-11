@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/knative/pkg/ptr"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	. "github.com/knative/serving/pkg/reconciler/testing"
 	"github.com/knative/serving/test"
 
@@ -288,7 +288,7 @@ func TestProjectedSecretVolume(t *testing.T) {
 			}},
 		},
 	})
-	withSubpath := func(svc *v1alpha1.Service) {
+	withSubpath := func(svc *v1beta1.Service) {
 		vm := &svc.Spec.Template.Spec.Containers[0].VolumeMounts[0]
 		vm.MountPath = test.HelloVolumePath
 		vm.SubPath = filepath.Base(test.HelloVolumePath)

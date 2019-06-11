@@ -40,7 +40,10 @@ import (
 )
 
 // ServiceOption enables further configuration of a Service.
-type ServiceOption func(*v1alpha1.Service)
+type ServiceOption func(*v1beta1.Service)
+
+// LegacyServiceOption enables further configuration of a Service.
+type LegacyServiceOption func(*v1alpha1.Service)
 
 var (
 	// configSpec is the spec used for the different styles of Service rollout.
@@ -66,14 +69,14 @@ func WithServiceDeletionTimestamp(r *v1alpha1.Service) {
 
 // WithEnv configures the Service to use the provided environment variables.
 func WithEnv(evs ...corev1.EnvVar) ServiceOption {
-	return func(s *v1alpha1.Service) {
+	return func(s *v1beta1.Service) {
 		s.Spec.Template.Spec.Containers[0].Env = evs
 	}
 }
 
 // WithEnvFrom configures the Service to use the provided environment variables.
 func WithEnvFrom(evs ...corev1.EnvFromSource) ServiceOption {
-	return func(s *v1alpha1.Service) {
+	return func(s *v1beta1.Service) {
 		s.Spec.Template.Spec.Containers[0].EnvFrom = evs
 	}
 }
@@ -116,21 +119,21 @@ func WithRunLatestRollout(s *v1alpha1.Service) {
 }
 
 // WithInlineConfigSpec confgures the Service to use the given config spec
-func WithInlineConfigSpec(config v1alpha1.ConfigurationSpec) ServiceOption {
-	return func(svc *v1alpha1.Service) {
+func WithInlineConfigSpec(config v1beta1.ConfigurationSpec) ServiceOption {
+	return func(svc *v1beta1.Service) {
 		svc.Spec.ConfigurationSpec = config
 	}
 }
 
 // WithInlineRouteSpec confgures the Service to use the given route spec
-func WithInlineRouteSpec(config v1alpha1.RouteSpec) ServiceOption {
+func WithInlineRouteSpec(config v1alpha1.RouteSpec) LegacyServiceOption {
 	return func(svc *v1alpha1.Service) {
 		svc.Spec.RouteSpec = config
 	}
 }
 
 // WithRunLatestConfigSpec confgures the Service to use a "runLatest" configuration
-func WithRunLatestConfigSpec(config v1alpha1.ConfigurationSpec) ServiceOption {
+func WithRunLatestConfigSpec(config v1alpha1.ConfigurationSpec) LegacyServiceOption {
 	return func(svc *v1alpha1.Service) {
 		svc.Spec = v1alpha1.ServiceSpec{
 			DeprecatedRunLatest: &v1alpha1.RunLatestType{
@@ -142,7 +145,7 @@ func WithRunLatestConfigSpec(config v1alpha1.ConfigurationSpec) ServiceOption {
 
 // WithServiceLabel attaches a particular label to the service.
 func WithServiceLabel(key, value string) ServiceOption {
-	return func(service *v1alpha1.Service) {
+	return func(service *v1beta1.Service) {
 		if service.Labels == nil {
 			service.Labels = make(map[string]string)
 		}
@@ -152,26 +155,18 @@ func WithServiceLabel(key, value string) ServiceOption {
 
 // WithResourceRequirements attaches resource requirements to the service
 func WithResourceRequirements(resourceRequirements corev1.ResourceRequirements) ServiceOption {
-	return func(svc *v1alpha1.Service) {
-		if svc.Spec.DeprecatedRunLatest != nil {
-			svc.Spec.DeprecatedRunLatest.Configuration.GetTemplate().Spec.GetContainer().Resources = resourceRequirements
-		} else {
-			svc.Spec.ConfigurationSpec.Template.Spec.Containers[0].Resources = resourceRequirements
-		}
+	return func(svc *v1beta1.Service) {
+		svc.Spec.Template.Spec.Containers[0].Resources = resourceRequirements
 	}
 }
 
 // WithVolume adds a volume to the service
 func WithVolume(name, mountPath string, volumeSource corev1.VolumeSource) ServiceOption {
-	return func(svc *v1alpha1.Service) {
-		var rt *v1alpha1.RevisionSpec
-		if svc.Spec.DeprecatedRunLatest != nil {
-			rt = &svc.Spec.DeprecatedRunLatest.Configuration.GetTemplate().Spec
-		} else {
-			rt = &svc.Spec.ConfigurationSpec.Template.Spec
-		}
+	return func(svc *v1beta1.Service) {
+		var rt *v1beta1.RevisionSpec
+		rt = &svc.Spec.Template.Spec
 
-		rt.GetContainer().VolumeMounts = append(rt.GetContainer().VolumeMounts,
+		rt.Containers[0].VolumeMounts = append(rt.Containers[0].VolumeMounts,
 			corev1.VolumeMount{
 				Name:      name,
 				MountPath: mountPath,
@@ -184,7 +179,7 @@ func WithVolume(name, mountPath string, volumeSource corev1.VolumeSource) Servic
 	}
 }
 
-func WithServiceAnnotations(annotations map[string]string) ServiceOption {
+func WithServiceAnnotations(annotations map[string]string) LegacyServiceOption {
 	return func(service *v1alpha1.Service) {
 		service.Annotations = resources.UnionMaps(service.Annotations, annotations)
 	}
@@ -192,23 +187,15 @@ func WithServiceAnnotations(annotations map[string]string) ServiceOption {
 
 // WithConfigAnnotations assigns config annotations to a service
 func WithConfigAnnotations(annotations map[string]string) ServiceOption {
-	return func(service *v1alpha1.Service) {
-		if service.Spec.DeprecatedRunLatest != nil {
-			service.Spec.DeprecatedRunLatest.Configuration.GetTemplate().ObjectMeta.Annotations = annotations
-		} else {
-			service.Spec.ConfigurationSpec.Template.ObjectMeta.Annotations = annotations
-		}
+	return func(service *v1beta1.Service) {
+		service.Spec.Template.ObjectMeta.Annotations = annotations
 	}
 }
 
 // WithRevisionTimeoutSeconds sets revision timeout
 func WithRevisionTimeoutSeconds(revisionTimeoutSeconds int64) ServiceOption {
-	return func(service *v1alpha1.Service) {
-		if service.Spec.DeprecatedRunLatest != nil {
-			service.Spec.DeprecatedRunLatest.Configuration.GetTemplate().Spec.TimeoutSeconds = ptr.Int64(revisionTimeoutSeconds)
-		} else {
-			service.Spec.ConfigurationSpec.Template.Spec.TimeoutSeconds = ptr.Int64(revisionTimeoutSeconds)
-		}
+	return func(service *v1beta1.Service) {
+		service.Spec.Template.Spec.TimeoutSeconds = ptr.Int64(revisionTimeoutSeconds)
 	}
 }
 
@@ -230,12 +217,12 @@ func MarkRouteNotOwned(service *v1alpha1.Service) {
 // WithPinnedRollout configures the Service to use a "pinned" rollout,
 // which is pinned to the named revision.
 // Deprecated, since PinnedType is deprecated.
-func WithPinnedRollout(name string) ServiceOption {
+func WithPinnedRollout(name string) LegacyServiceOption {
 	return WithPinnedRolloutConfigSpec(name, *configSpec.DeepCopy())
 }
 
 // WithPinnedRolloutConfigSpec WithPinnedRollout2
-func WithPinnedRolloutConfigSpec(name string, config v1alpha1.ConfigurationSpec) ServiceOption {
+func WithPinnedRolloutConfigSpec(name string, config v1alpha1.ConfigurationSpec) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Spec = v1alpha1.ServiceSpec{
 			DeprecatedPinned: &v1alpha1.PinnedType{
@@ -248,14 +235,14 @@ func WithPinnedRolloutConfigSpec(name string, config v1alpha1.ConfigurationSpec)
 
 // WithReleaseRolloutAndPercentage configures the Service to use a "release" rollout,
 // which spans the provided revisions.
-func WithReleaseRolloutAndPercentage(percentage int, names ...string) ServiceOption {
+func WithReleaseRolloutAndPercentage(percentage int, names ...string) LegacyServiceOption {
 	return WithReleaseRolloutAndPercentageConfigSpec(percentage, *configSpec.DeepCopy(),
 		names...)
 }
 
 // WithReleaseRolloutAndPercentageConfigSpec configures the Service to use a "release" rollout,
 // which spans the provided revisions.
-func WithReleaseRolloutAndPercentageConfigSpec(percentage int, config v1alpha1.ConfigurationSpec, names ...string) ServiceOption {
+func WithReleaseRolloutAndPercentageConfigSpec(percentage int, config v1alpha1.ConfigurationSpec, names ...string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Spec = v1alpha1.ServiceSpec{
 			DeprecatedRelease: &v1alpha1.ReleaseType{
@@ -269,7 +256,7 @@ func WithReleaseRolloutAndPercentageConfigSpec(percentage int, config v1alpha1.C
 
 // WithReleaseRolloutConfigSpec configures the Service to use a "release" rollout,
 // which spans the provided revisions.
-func WithReleaseRolloutConfigSpec(config v1alpha1.ConfigurationSpec, names ...string) ServiceOption {
+func WithReleaseRolloutConfigSpec(config v1alpha1.ConfigurationSpec, names ...string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Spec = v1alpha1.ServiceSpec{
 			DeprecatedRelease: &v1alpha1.ReleaseType{
@@ -282,7 +269,7 @@ func WithReleaseRolloutConfigSpec(config v1alpha1.ConfigurationSpec, names ...st
 
 // WithReleaseRollout configures the Service to use a "release" rollout,
 // which spans the provided revisions.
-func WithReleaseRollout(names ...string) ServiceOption {
+func WithReleaseRollout(names ...string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Spec = v1alpha1.ServiceSpec{
 			DeprecatedRelease: &v1alpha1.ReleaseType{
@@ -332,7 +319,7 @@ func WithSvcStatusAddress(s *v1alpha1.Service) {
 }
 
 // WithSvcStatusTraffic sets the Service's status traffic block to the specified traffic targets.
-func WithSvcStatusTraffic(targets ...v1alpha1.TrafficTarget) ServiceOption {
+func WithSvcStatusTraffic(targets ...v1alpha1.TrafficTarget) LegacyServiceOption {
 	return func(r *v1alpha1.Service) {
 		// Automatically inject URL into TrafficTarget status
 		for _, tt := range targets {
@@ -343,7 +330,7 @@ func WithSvcStatusTraffic(targets ...v1alpha1.TrafficTarget) ServiceOption {
 }
 
 // WithFailedRoute reflects a Route's failure in the Service resource.
-func WithFailedRoute(reason, message string) ServiceOption {
+func WithFailedRoute(reason, message string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.PropagateRouteStatus(&v1alpha1.RouteStatus{
 			Status: duckv1beta1.Status{
@@ -361,7 +348,7 @@ func WithFailedRoute(reason, message string) ServiceOption {
 // WithReadyConfig reflects the Configuration's readiness in the Service
 // resource.  This must coincide with the setting of Latest{Created,Ready}
 // to the provided revision name.
-func WithReadyConfig(name string) ServiceOption {
+func WithReadyConfig(name string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.PropagateConfigurationStatus(&v1alpha1.ConfigurationStatus{
 			Status: duckv1beta1.Status{
@@ -380,7 +367,7 @@ func WithReadyConfig(name string) ServiceOption {
 
 // WithFailedConfig reflects the Configuration's failure in the Service
 // resource.  The failing revision's name is reflected in LatestCreated.
-func WithFailedConfig(name, reason, message string) ServiceOption {
+func WithFailedConfig(name, reason, message string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.PropagateConfigurationStatus(&v1alpha1.ConfigurationStatus{
 			Status: duckv1beta1.Status{
@@ -400,7 +387,7 @@ func WithFailedConfig(name, reason, message string) ServiceOption {
 }
 
 // WithServiceLatestReadyRevision sets the latest ready revision on the Service's status.
-func WithServiceLatestReadyRevision(lrr string) ServiceOption {
+func WithServiceLatestReadyRevision(lrr string) LegacyServiceOption {
 	return func(s *v1alpha1.Service) {
 		s.Status.LatestReadyRevisionName = lrr
 	}
@@ -412,17 +399,20 @@ func WithServiceStatusRouteNotReady(s *v1alpha1.Service) {
 }
 
 // RouteOption enables further configuration of a Route.
-type RouteOption func(*v1alpha1.Route)
+type RouteOption func(*v1beta1.Route)
+
+// LegacyRouteOption enables further configuration of a Route.
+type LegacyRouteOption func(*v1alpha1.Route)
 
 // WithSpecTraffic sets the Route's traffic block to the specified traffic targets.
-func WithSpecTraffic(traffic ...v1alpha1.TrafficTarget) RouteOption {
+func WithSpecTraffic(traffic ...v1alpha1.TrafficTarget) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		r.Spec.Traffic = traffic
 	}
 }
 
 // WithRouteUID sets the Route's UID
-func WithRouteUID(uid types.UID) RouteOption {
+func WithRouteUID(uid types.UID) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		r.ObjectMeta.UID = uid
 	}
@@ -445,7 +435,7 @@ func WithAnotherRouteFinalizer(r *v1alpha1.Route) {
 }
 
 // WithConfigTarget sets the Route's traffic block to point at a particular Configuration.
-func WithConfigTarget(config string) RouteOption {
+func WithConfigTarget(config string) LegacyRouteOption {
 	return WithSpecTraffic(v1alpha1.TrafficTarget{
 		TrafficTarget: v1beta1.TrafficTarget{
 			ConfigurationName: config,
@@ -455,7 +445,7 @@ func WithConfigTarget(config string) RouteOption {
 }
 
 // WithRevTarget sets the Route's traffic block to point at a particular Revision.
-func WithRevTarget(revision string) RouteOption {
+func WithRevTarget(revision string) LegacyRouteOption {
 	return WithSpecTraffic(v1alpha1.TrafficTarget{
 		TrafficTarget: v1beta1.TrafficTarget{
 			RevisionName: revision,
@@ -465,7 +455,7 @@ func WithRevTarget(revision string) RouteOption {
 }
 
 // WithStatusTraffic sets the Route's status traffic block to the specified traffic targets.
-func WithStatusTraffic(traffic ...v1alpha1.TrafficTarget) RouteOption {
+func WithStatusTraffic(traffic ...v1alpha1.TrafficTarget) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		r.Status.Traffic = traffic
 	}
@@ -557,28 +547,28 @@ func MarkIngressReady(r *v1alpha1.Route) {
 }
 
 // MarkMissingTrafficTarget calls the method of the same name on .Status
-func MarkMissingTrafficTarget(kind, revision string) RouteOption {
+func MarkMissingTrafficTarget(kind, revision string) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		r.Status.MarkMissingTrafficTarget(kind, revision)
 	}
 }
 
 // MarkConfigurationNotReady calls the method of the same name on .Status
-func MarkConfigurationNotReady(name string) RouteOption {
+func MarkConfigurationNotReady(name string) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		r.Status.MarkConfigurationNotReady(name)
 	}
 }
 
 // MarkConfigurationFailed calls the method of the same name on .Status
-func MarkConfigurationFailed(name string) RouteOption {
+func MarkConfigurationFailed(name string) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		r.Status.MarkConfigurationFailed(name)
 	}
 }
 
 // WithRouteLabel sets the specified label on the Route.
-func WithRouteLabel(key, value string) RouteOption {
+func WithRouteLabel(key, value string) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		if r.Labels == nil {
 			r.Labels = make(map[string]string)
@@ -588,7 +578,7 @@ func WithRouteLabel(key, value string) RouteOption {
 }
 
 // WithIngressClass sets the ingress class annotation on the Route.
-func WithIngressClass(ingressClass string) RouteOption {
+func WithIngressClass(ingressClass string) LegacyRouteOption {
 	return func(r *v1alpha1.Route) {
 		if r.Annotations == nil {
 			r.Annotations = make(map[string]string)
@@ -598,7 +588,10 @@ func WithIngressClass(ingressClass string) RouteOption {
 }
 
 // ConfigOption enables further configuration of a Configuration.
-type ConfigOption func(*v1alpha1.Configuration)
+type ConfigOption func(*v1beta1.Configuration)
+
+// LegacyConfigOption enables further configuration of a Configuration.
+type LegacyConfigOption func(*v1alpha1.Configuration)
 
 // WithConfigDeletionTimestamp will set the DeletionTimestamp on the Config.
 func WithConfigDeletionTimestamp(r *v1alpha1.Configuration) {
@@ -612,14 +605,14 @@ func WithConfigOwnersRemoved(cfg *v1alpha1.Configuration) {
 }
 
 // WithConfigContainerConcurrency sets the given Configuration's concurrency.
-func WithConfigContainerConcurrency(cc v1beta1.RevisionContainerConcurrencyType) ConfigOption {
+func WithConfigContainerConcurrency(cc v1beta1.RevisionContainerConcurrencyType) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Spec.GetTemplate().Spec.ContainerConcurrency = cc
 	}
 }
 
 // WithGeneration sets the generation of the Configuration.
-func WithGeneration(gen int64) ConfigOption {
+func WithGeneration(gen int64) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Generation = gen
 	}
@@ -631,7 +624,7 @@ func WithObservedGen(cfg *v1alpha1.Configuration) {
 }
 
 // WithCreatedAndReady sets the latest{Created,Ready}RevisionName on the Configuration.
-func WithCreatedAndReady(created, ready string) ConfigOption {
+func WithCreatedAndReady(created, ready string) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Status.SetLatestCreatedRevisionName(created)
 		cfg.Status.SetLatestReadyRevisionName(ready)
@@ -640,7 +633,7 @@ func WithCreatedAndReady(created, ready string) ConfigOption {
 
 // WithLatestCreated initializes the .status.latestCreatedRevisionName to be the name
 // of the latest revision that the Configuration would have created.
-func WithLatestCreated(name string) ConfigOption {
+func WithLatestCreated(name string) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Status.SetLatestCreatedRevisionName(name)
 	}
@@ -648,28 +641,28 @@ func WithLatestCreated(name string) ConfigOption {
 
 // WithLatestReady initializes the .status.latestReadyRevisionName to be the name
 // of the latest revision that the Configuration would have created.
-func WithLatestReady(name string) ConfigOption {
+func WithLatestReady(name string) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Status.SetLatestReadyRevisionName(name)
 	}
 }
 
 // MarkRevisionCreationFailed calls .Status.MarkRevisionCreationFailed.
-func MarkRevisionCreationFailed(msg string) ConfigOption {
+func MarkRevisionCreationFailed(msg string) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Status.MarkRevisionCreationFailed(msg)
 	}
 }
 
 // MarkLatestCreatedFailed calls .Status.MarkLatestCreatedFailed.
-func MarkLatestCreatedFailed(msg string) ConfigOption {
+func MarkLatestCreatedFailed(msg string) LegacyConfigOption {
 	return func(cfg *v1alpha1.Configuration) {
 		cfg.Status.MarkLatestCreatedFailed(cfg.Status.LatestCreatedRevisionName, msg)
 	}
 }
 
 // WithConfigLabel attaches a particular label to the configuration.
-func WithConfigLabel(key, value string) ConfigOption {
+func WithConfigLabel(key, value string) LegacyConfigOption {
 	return func(config *v1alpha1.Configuration) {
 		if config.Labels == nil {
 			config.Labels = make(map[string]string)

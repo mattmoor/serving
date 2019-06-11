@@ -20,11 +20,12 @@ import (
 	"context"
 
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Service creates a service with ServiceOptions
-func Service(name, namespace string, so ...ServiceOption) *v1alpha1.Service {
+// LegacyService creates a service with LegacyServiceOptions
+func LegacyService(name, namespace string, so ...LegacyServiceOption) *v1alpha1.Service {
 	s := &v1alpha1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -38,9 +39,38 @@ func Service(name, namespace string, so ...ServiceOption) *v1alpha1.Service {
 	return s
 }
 
-// ServiceWithoutNamespace creates a service with ServiceOptions but without a specific namespace
-func ServiceWithoutNamespace(name string, so ...ServiceOption) *v1alpha1.Service {
+// LegacyServiceWithoutNamespace creates a service with LegacyServiceOptions but without a specific namespace
+func LegacyServiceWithoutNamespace(name string, so ...LegacyServiceOption) *v1alpha1.Service {
 	s := &v1alpha1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	for _, opt := range so {
+		opt(s)
+	}
+	s.SetDefaults(context.Background())
+	return s
+}
+
+// Service creates a service with ServiceOptions
+func Service(name, namespace string, so ...ServiceOption) *v1beta1.Service {
+	s := &v1beta1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	for _, opt := range so {
+		opt(s)
+	}
+	s.SetDefaults(context.Background())
+	return s
+}
+
+// ServiceWithoutNamespace creates a service with ServiceOptions but without a specific namespace
+func ServiceWithoutNamespace(name string, so ...ServiceOption) *v1beta1.Service {
+	s := &v1beta1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},

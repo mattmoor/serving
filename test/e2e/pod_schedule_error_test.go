@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	serviceresourcenames "github.com/knative/serving/pkg/reconciler/service/resources/names"
 	"github.com/knative/serving/test"
 	corev1 "k8s.io/api/core/v1"
@@ -55,7 +55,7 @@ func TestPodScheduleError(t *testing.T) {
 		},
 	}
 	var (
-		svc *v1alpha1.Service
+		svc *v1beta1.Service
 		err error
 	)
 	if svc, err = test.CreateLatestService(t, clients, names, &test.Options{ContainerResources: resources}); err != nil {
@@ -64,8 +64,8 @@ func TestPodScheduleError(t *testing.T) {
 
 	names.Config = serviceresourcenames.Configuration(svc)
 
-	err = test.WaitForServiceState(clients.ServingClient, names.Service, func(r *v1alpha1.Service) (bool, error) {
-		cond := r.Status.GetCondition(v1alpha1.ConfigurationConditionReady)
+	err = test.WaitForServiceState(clients.ServingClient, names.Service, func(r *v1beta1.Service) (bool, error) {
+		cond := r.Status.GetCondition(v1beta1.ConfigurationConditionReady)
 		if cond != nil && !cond.IsUnknown() {
 			if strings.Contains(cond.Message, errorMsg) && cond.IsFalse() {
 				return true, nil
@@ -87,8 +87,8 @@ func TestPodScheduleError(t *testing.T) {
 	}
 
 	t.Log("When the containers are not scheduled, the revision should have error status.")
-	err = test.WaitForRevisionState(clients.ServingClient, revisionName, func(r *v1alpha1.Revision) (bool, error) {
-		cond := r.Status.GetCondition(v1alpha1.RevisionConditionReady)
+	err = test.WaitForRevisionState(clients.ServingClient, revisionName, func(r *v1beta1.Revision) (bool, error) {
+		cond := r.Status.GetCondition(v1beta1.RevisionConditionReady)
 		if cond != nil {
 			if cond.Reason == revisionReason && strings.Contains(cond.Message, errorMsg) {
 				return true, nil

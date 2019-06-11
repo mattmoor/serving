@@ -25,25 +25,25 @@ import (
 	"testing"
 
 	pkgTest "github.com/knative/pkg/test"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	rtesting "github.com/knative/serving/pkg/reconciler/testing"
 	"github.com/knative/serving/test"
 )
 
 func setServiceGenerateName(generateName string) rtesting.ServiceOption {
-	return func(service *v1alpha1.Service) {
+	return func(service *v1beta1.Service) {
 		service.ObjectMeta.GenerateName = generateName
 	}
 }
 
 func setConfigurationGenerateName(generateName string) rtesting.ConfigOption {
-	return func(config *v1alpha1.Configuration) {
+	return func(config *v1beta1.Configuration) {
 		config.ObjectMeta.GenerateName = generateName
 	}
 }
 
 func setRouteGenerateName(generateName string) rtesting.RouteOption {
-	return func(route *v1alpha1.Route) {
+	return func(route *v1beta1.Route) {
 		route.ObjectMeta.GenerateName = generateName
 	}
 }
@@ -74,13 +74,13 @@ func validateName(generateName, name string) error {
 	return nil
 }
 
-func canServeRequests(t *testing.T, clients *test.Clients, route *v1alpha1.Route) error {
+func canServeRequests(t *testing.T, clients *test.Clients, route *v1beta1.Route) error {
 	t.Logf("Route %s has a domain set in its status", route.Name)
 	var domain string
 	err := test.WaitForRouteState(
 		clients.ServingClient,
 		route.Name,
-		func(r *v1alpha1.Route) (bool, error) {
+		func(r *v1beta1.Route) (bool, error) {
 			domain = r.Status.URL.Host
 			return domain != "", nil
 		},

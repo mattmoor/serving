@@ -26,7 +26,7 @@ import (
 
 	pkgTest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,11 +43,11 @@ const (
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForRouteState(client *ServingClients, name string, inState func(r *v1alpha1.Route) (bool, error), desc string) error {
+func WaitForRouteState(client *ServingClients, name string, inState func(r *v1beta1.Route) (bool, error), desc string) error {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForRouteState/%s/%s", name, desc))
 	defer span.End()
 
-	var lastState *v1alpha1.Route
+	var lastState *v1beta1.Route
 	waitErr := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		var err error
 		lastState, err = client.Routes.Get(name, metav1.GetOptions{})
@@ -66,7 +66,7 @@ func WaitForRouteState(client *ServingClients, name string, inState func(r *v1al
 // CheckRouteState verifies the status of the Route called name from client
 // is in a particular state by calling `inState` and expecting `true`.
 // This is the non-polling variety of WaitForRouteState
-func CheckRouteState(client *ServingClients, name string, inState func(r *v1alpha1.Route) (bool, error)) error {
+func CheckRouteState(client *ServingClients, name string, inState func(r *v1beta1.Route) (bool, error)) error {
 	r, err := client.Routes.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -83,11 +83,11 @@ func CheckRouteState(client *ServingClients, name string, inState func(r *v1alph
 // from client every interval until inState returns `true` indicating it
 // is done, returns an error or timeout. desc will be used to name the metric
 // that is emitted to track how long it took for name to get into the state checked by inState.
-func WaitForConfigurationState(client *ServingClients, name string, inState func(c *v1alpha1.Configuration) (bool, error), desc string) error {
+func WaitForConfigurationState(client *ServingClients, name string, inState func(c *v1beta1.Configuration) (bool, error), desc string) error {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForConfigurationState/%s/%s", name, desc))
 	defer span.End()
 
-	var lastState *v1alpha1.Configuration
+	var lastState *v1beta1.Configuration
 	waitErr := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		var err error
 		lastState, err = client.Configs.Get(name, metav1.GetOptions{})
@@ -106,7 +106,7 @@ func WaitForConfigurationState(client *ServingClients, name string, inState func
 // CheckConfigurationState verifies the status of the Configuration called name from client
 // is in a particular state by calling `inState` and expecting `true`.
 // This is the non-polling variety of WaitForConfigurationState
-func CheckConfigurationState(client *ServingClients, name string, inState func(r *v1alpha1.Configuration) (bool, error)) error {
+func CheckConfigurationState(client *ServingClients, name string, inState func(r *v1beta1.Configuration) (bool, error)) error {
 	c, err := client.Configs.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -123,11 +123,11 @@ func CheckConfigurationState(client *ServingClients, name string, inState func(r
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout. desc will be used to name the metric
 // that is emitted to track how long it took for name to get into the state checked by inState.
-func WaitForRevisionState(client *ServingClients, name string, inState func(r *v1alpha1.Revision) (bool, error), desc string) error {
+func WaitForRevisionState(client *ServingClients, name string, inState func(r *v1beta1.Revision) (bool, error), desc string) error {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForRevision/%s/%s", name, desc))
 	defer span.End()
 
-	var lastState *v1alpha1.Revision
+	var lastState *v1beta1.Revision
 	waitErr := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		var err error
 		lastState, err = client.Revisions.Get(name, metav1.GetOptions{})
@@ -146,7 +146,7 @@ func WaitForRevisionState(client *ServingClients, name string, inState func(r *v
 // CheckRevisionState verifies the status of the Revision called name from client
 // is in a particular state by calling `inState` and expecting `true`.
 // This is the non-polling variety of WaitForRevisionState
-func CheckRevisionState(client *ServingClients, name string, inState func(r *v1alpha1.Revision) (bool, error)) error {
+func CheckRevisionState(client *ServingClients, name string, inState func(r *v1beta1.Revision) (bool, error)) error {
 	r, err := client.Revisions.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -163,11 +163,11 @@ func CheckRevisionState(client *ServingClients, name string, inState func(r *v1a
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout. desc will be used to name the metric
 // that is emitted to track how long it took for name to get into the state checked by inState.
-func WaitForServiceState(client *ServingClients, name string, inState func(s *v1alpha1.Service) (bool, error), desc string) error {
+func WaitForServiceState(client *ServingClients, name string, inState func(s *v1beta1.Service) (bool, error), desc string) error {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForServiceState/%s/%s", name, desc))
 	defer span.End()
 
-	var lastState *v1alpha1.Service
+	var lastState *v1beta1.Service
 	waitErr := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		var err error
 		lastState, err = client.Services.Get(name, metav1.GetOptions{})
@@ -186,7 +186,7 @@ func WaitForServiceState(client *ServingClients, name string, inState func(s *v1
 // CheckServiceState verifies the status of the Service called name from client
 // is in a particular state by calling `inState` and expecting `true`.
 // This is the non-polling variety of WaitForServiceState.
-func CheckServiceState(client *ServingClients, name string, inState func(s *v1alpha1.Service) (bool, error)) error {
+func CheckServiceState(client *ServingClients, name string, inState func(s *v1beta1.Service) (bool, error)) error {
 	s, err := client.Services.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err

@@ -26,7 +26,6 @@ import (
 	"time"
 
 	pkgTest "github.com/knative/pkg/test"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	serviceresourcenames "github.com/knative/serving/pkg/reconciler/service/resources/names"
 	. "github.com/knative/serving/pkg/reconciler/testing"
@@ -38,7 +37,7 @@ import (
 
 // createLatestService creates a service in namespace with the name names.Service
 // that uses the image specified by names.Image
-func createLatestService(t *testing.T, clients *test.Clients, names test.ResourceNames, revisionTimeoutSeconds int64) (*v1alpha1.Service, error) {
+func createLatestService(t *testing.T, clients *test.Clients, names test.ResourceNames, revisionTimeoutSeconds int64) (*v1beta1.Service, error) {
 	service := test.LatestService(names, &test.Options{}, WithRevisionTimeoutSeconds(revisionTimeoutSeconds))
 	test.LogResourceObject(t, test.ResourceObjects{Service: service})
 	svc, err := clients.ServingClient.Services.Create(service)
@@ -159,19 +158,15 @@ func TestRevisionTimeout(t *testing.T) {
 	rev5s.TrafficTarget = "rev5s"
 
 	t.Log("Updating RouteSpec")
-	if _, err := test.UpdateServiceRouteSpec(t, clients, names, v1alpha1.RouteSpec{
-		Traffic: []v1alpha1.TrafficTarget{{
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:          rev2s.TrafficTarget,
-				RevisionName: rev2s.Revision,
-				Percent:      50,
-			},
+	if _, err := test.UpdateServiceRouteSpec(t, clients, names, v1beta1.RouteSpec{
+		Traffic: []v1beta1.TrafficTarget{{
+			Tag:          rev2s.TrafficTarget,
+			RevisionName: rev2s.Revision,
+			Percent:      50,
 		}, {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:          rev5s.TrafficTarget,
-				RevisionName: rev5s.Revision,
-				Percent:      50,
-			},
+			Tag:          rev5s.TrafficTarget,
+			RevisionName: rev5s.Revision,
+			Percent:      50,
 		}},
 	}); err != nil {
 		t.Fatalf("Failed to update Service: %v", err)

@@ -162,7 +162,7 @@ func TestRunLatestService(t *testing.T) {
 	// Update container with user port.
 	t.Logf("Updating the port of the user container for service %s to %d", names.Service, userPort)
 	desiredSvc := objects.Service.DeepCopy()
-	desiredSvc.Spec.ConfigurationSpec.GetTemplate().Spec.GetContainer().Ports = []corev1.ContainerPort{{
+	desiredSvc.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{{
 		ContainerPort: userPort,
 	}}
 	if objects.Service, err = test.PatchService(t, clients, objects.Service, desiredSvc); err != nil {
@@ -189,20 +189,19 @@ func TestRunLatestService(t *testing.T) {
 	}
 }
 
-func waitForDesiredTrafficShape(t *testing.T, sName string, want map[string]v1alpha1.TrafficTarget, clients *test.Clients) error {
+func waitForDesiredTrafficShape(t *testing.T, sName string, want map[string]v1beta1.TrafficTarget, clients *test.Clients) error {
 	return test.WaitForServiceState(
-		clients.ServingClient, sName, func(s *v1alpha1.Service) (bool, error) {
+		clients.ServingClient, sName, func(s *v1beta1.Service) (bool, error) {
 			// IsServiceReady never returns an error.
 			if ok, _ := test.IsServiceReady(s); !ok {
 				return false, nil
 			}
 			// Match the traffic shape.
-			got := map[string]v1alpha1.TrafficTarget{}
+			got := map[string]v1beta1.TrafficTarget{}
 			for _, tt := range s.Status.Traffic {
 				got[tt.Tag] = tt
 			}
-			ignoreURLs := cmpopts.IgnoreFields(v1alpha1.TrafficTarget{},
-				"TrafficTarget.URL", "DeprecatedName")
+			ignoreURLs := cmpopts.IgnoreFields(v1beta1.TrafficTarget{}, "URL")
 			if !cmp.Equal(got, want, ignoreURLs) {
 				t.Logf("For service %s traffic shape mismatch: (-got, +want) %s",
 					sName, cmp.Diff(got, want, ignoreURLs))
@@ -229,8 +228,8 @@ func TestRunLatestServiceBYOName(t *testing.T) {
 	revName := names.Service + "-byoname"
 
 	// Setup initial Service
-	objects, err := test.CreateRunLatestServiceReady(t, clients, &names, &test.Options{}, func(svc *v1alpha1.Service) {
-		svc.Spec.ConfigurationSpec.GetTemplate().Name = revName
+	objects, err := test.CreateRunLatestServiceReady(t, clients, &names, &test.Options{}, func(svc *v1beta1.Service) {
+		svc.Spec.Template.Name = revName
 	})
 	if err != nil {
 		t.Fatalf("Failed to create initial Service %v: %v", names.Service, err)
@@ -314,39 +313,31 @@ func TestReleaseService(t *testing.T) {
 
 	// 1. One Revision Specified, current == latest.
 	t.Log("1. Updating Service to ReleaseType using lastCreatedRevision")
-	objects.Service, err = test.UpdateServiceRouteSpec(t, clients, names, v1alpha1.RouteSpec{
-		Traffic: []v1alpha1.TrafficTarget{{
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:          "current",
-				RevisionName: firstRevision,
-				Percent:      100,
-			},
+	objects.Service, err = test.UpdateServiceRouteSpec(t, clients, names, v1beta1.RouteSpec{
+		Traffic: []v1beta1.TrafficTarget{{
+			Tag:          "current",
+			RevisionName: firstRevision,
+			Percent:      100,
 		}, {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:     "latest",
-				Percent: 0,
-			},
+			Tag:     "latest",
+			Percent: 0,
 		}},
 	})
 	if err != nil {
 		t.Fatalf("Failed to update Service: %v", err)
 	}
 
-	desiredTrafficShape := map[string]v1alpha1.TrafficTarget{
+	desiredTrafficShape := map[string]v1beta1.TrafficTarget{
 		"current": {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:            "current",
-				RevisionName:   objects.Config.Status.LatestReadyRevisionName,
-				Percent:        100,
-				LatestRevision: ptr.Bool(false),
-			},
+			Tag:            "current",
+			RevisionName:   objects.Config.Status.LatestReadyRevisionName,
+			Percent:        100,
+			LatestRevision: ptr.Bool(false),
 		},
 		"latest": {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:            "latest",
-				RevisionName:   objects.Config.Status.LatestReadyRevisionName,
-				LatestRevision: ptr.Bool(true),
-			},
+			Tag:            "latest",
+			RevisionName:   objects.Config.Status.LatestReadyRevisionName,
+			LatestRevision: ptr.Bool(true),
 		},
 	}
 	t.Log("Waiting for Service to become ready with the new shape.")
@@ -376,12 +367,10 @@ func TestReleaseService(t *testing.T) {
 	secondRevision := names.Revision
 
 	// Also verify traffic is in the correct shape.
-	desiredTrafficShape["latest"] = v1alpha1.TrafficTarget{
-		TrafficTarget: v1beta1.TrafficTarget{
-			Tag:            "latest",
-			RevisionName:   secondRevision,
-			LatestRevision: ptr.Bool(true),
-		},
+	desiredTrafficShape["latest"] = v1beta1.TrafficTarget{
+		Tag:            "latest",
+		RevisionName:   secondRevision,
+		LatestRevision: ptr.Bool(true),
 	}
 	t.Log("Waiting for Service to become ready with the new shape.")
 	if err := waitForDesiredTrafficShape(t, names.Service, desiredTrafficShape, clients); err != nil {
@@ -399,53 +388,41 @@ func TestReleaseService(t *testing.T) {
 
 	// 3. Two Revisions Specified, 50% rollout, candidate == latest.
 	t.Log("3. Updating Service to split traffic between two revisions using Release mode")
-	objects.Service, err = test.UpdateServiceRouteSpec(t, clients, names, v1alpha1.RouteSpec{
-		Traffic: []v1alpha1.TrafficTarget{{
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:          "current",
-				RevisionName: firstRevision,
-				Percent:      50,
-			},
+	objects.Service, err = test.UpdateServiceRouteSpec(t, clients, names, v1beta1.RouteSpec{
+		Traffic: []v1beta1.TrafficTarget{{
+			Tag:          "current",
+			RevisionName: firstRevision,
+			Percent:      50,
 		}, {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:          "candidate",
-				RevisionName: secondRevision,
-				Percent:      50,
-			},
+			Tag:          "candidate",
+			RevisionName: secondRevision,
+			Percent:      50,
 		}, {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:     "latest",
-				Percent: 0,
-			},
+			Tag:     "latest",
+			Percent: 0,
 		}},
 	})
 	if err != nil {
 		t.Fatalf("Failed to update Service: %v", err)
 	}
 
-	desiredTrafficShape = map[string]v1alpha1.TrafficTarget{
+	desiredTrafficShape = map[string]v1beta1.TrafficTarget{
 		"current": {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:            "current",
-				RevisionName:   firstRevision,
-				Percent:        50,
-				LatestRevision: ptr.Bool(false),
-			},
+			Tag:            "current",
+			RevisionName:   firstRevision,
+			Percent:        50,
+			LatestRevision: ptr.Bool(false),
 		},
 		"candidate": {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:            "candidate",
-				RevisionName:   secondRevision,
-				Percent:        50,
-				LatestRevision: ptr.Bool(false),
-			},
+			Tag:            "candidate",
+			RevisionName:   secondRevision,
+			Percent:        50,
+			LatestRevision: ptr.Bool(false),
 		},
 		"latest": {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:            "latest",
-				RevisionName:   secondRevision,
-				LatestRevision: ptr.Bool(true),
-			},
+			Tag:            "latest",
+			RevisionName:   secondRevision,
+			LatestRevision: ptr.Bool(true),
 		},
 	}
 	t.Log("Waiting for Service to become ready with the new shape.")
@@ -473,12 +450,10 @@ func TestReleaseService(t *testing.T) {
 	}
 	thirdRevision := names.Revision
 
-	desiredTrafficShape["latest"] = v1alpha1.TrafficTarget{
-		TrafficTarget: v1beta1.TrafficTarget{
-			Tag:            "latest",
-			RevisionName:   thirdRevision,
-			LatestRevision: ptr.Bool(true),
-		},
+	desiredTrafficShape["latest"] = v1beta1.TrafficTarget{
+		Tag:            "latest",
+		RevisionName:   thirdRevision,
+		LatestRevision: ptr.Bool(true),
 	}
 	t.Log("Waiting for Service to become ready with the new shape.")
 	if err := waitForDesiredTrafficShape(t, names.Service, desiredTrafficShape, clients); err != nil {
@@ -497,23 +472,17 @@ func TestReleaseService(t *testing.T) {
 	// Now update the service to use `@latest` as candidate.
 	t.Log("5. Updating Service to split traffic between two `current` and `@latest`")
 
-	objects.Service, err = test.UpdateServiceRouteSpec(t, clients, names, v1alpha1.RouteSpec{
-		Traffic: []v1alpha1.TrafficTarget{{
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:          "current",
-				RevisionName: firstRevision,
-				Percent:      50,
-			},
+	objects.Service, err = test.UpdateServiceRouteSpec(t, clients, names, v1beta1.RouteSpec{
+		Traffic: []v1beta1.TrafficTarget{{
+			Tag:          "current",
+			RevisionName: firstRevision,
+			Percent:      50,
 		}, {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:     "candidate",
-				Percent: 50,
-			},
+			Tag:     "candidate",
+			Percent: 50,
 		}, {
-			TrafficTarget: v1beta1.TrafficTarget{
-				Tag:     "latest",
-				Percent: 0,
-			},
+			Tag:     "latest",
+			Percent: 0,
 		}},
 	})
 	if err != nil {
@@ -526,13 +495,11 @@ func TestReleaseService(t *testing.T) {
 	}
 
 	// `candidate` now points to the latest.
-	desiredTrafficShape["candidate"] = v1alpha1.TrafficTarget{
-		TrafficTarget: v1beta1.TrafficTarget{
-			Tag:            "candidate",
-			RevisionName:   thirdRevision,
-			Percent:        50,
-			LatestRevision: ptr.Bool(true),
-		},
+	desiredTrafficShape["candidate"] = v1beta1.TrafficTarget{
+		Tag:            "candidate",
+		RevisionName:   thirdRevision,
+		Percent:        50,
+		LatestRevision: ptr.Bool(true),
 	}
 	t.Log("Waiting for Service to become ready with the new shape.")
 	if err := waitForDesiredTrafficShape(t, names.Service, desiredTrafficShape, clients); err != nil {

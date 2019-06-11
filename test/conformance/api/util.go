@@ -28,7 +28,7 @@ import (
 	pkgTest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/spoof"
 	"github.com/knative/serving/pkg/apis/serving"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/test"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -222,7 +222,7 @@ func validateRunLatestDataPlane(t *testing.T, clients *test.Clients, names test.
 // runLatest Service's lifecycle so long as the service is in a "Ready" state.
 func validateRunLatestControlPlane(t *testing.T, clients *test.Clients, names test.ResourceNames, expectedGeneration string) error {
 	t.Log("Checking to ensure Revision is in desired state with generation: ", expectedGeneration)
-	err := test.CheckRevisionState(clients.ServingClient, names.Revision, func(r *v1alpha1.Revision) (bool, error) {
+	err := test.CheckRevisionState(clients.ServingClient, names.Revision, func(r *v1beta1.Revision) (bool, error) {
 		if ready, err := test.IsRevisionReady(r); !ready {
 			return false, fmt.Errorf("revision %s did not become ready to serve traffic: %v", names.Revision, err)
 		}
@@ -243,7 +243,7 @@ func validateRunLatestControlPlane(t *testing.T, clients *test.Clients, names te
 	}
 
 	t.Log("Checking to ensure Configuration is in desired state.")
-	err = test.CheckConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	err = test.CheckConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		if c.Status.LatestCreatedRevisionName != names.Revision {
 			return false, fmt.Errorf("the Configuration %s was not updated indicating that the Revision %s was created: %v", names.Config, names.Revision, err)
 		}

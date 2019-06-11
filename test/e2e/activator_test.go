@@ -25,7 +25,7 @@ import (
 	"testing"
 
 	pkgTest "github.com/knative/pkg/test"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	rnames "github.com/knative/serving/pkg/reconciler/revision/resources/names"
 	"github.com/knative/serving/test"
 )
@@ -53,7 +53,7 @@ func TestActivatorOverload(t *testing.T) {
 	t.Log("Creating a service with run latest configuration.")
 	// Create a service with concurrency 1 that sleeps for N ms.
 	// Limit its maxScale to 10 containers, wait for the service to scale down and hit it with concurrent requests.
-	resources, err := test.CreateRunLatestServiceReady(t, clients, &names, &test.Options{}, func(service *v1alpha1.Service) {
+	resources, err := test.CreateRunLatestServiceReady(t, clients, &names, &test.Options{}, func(service *v1beta1.Service) {
 		service.Spec.ConfigurationSpec.Template.Spec.ContainerConcurrency = 1
 		service.Spec.ConfigurationSpec.Template.Annotations = map[string]string{"autoscaling.knative.dev/maxScale": "10"}
 	})

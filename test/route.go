@@ -23,13 +23,13 @@ import (
 	"testing"
 
 	"github.com/knative/pkg/test/spoof"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 
 	rtesting "github.com/knative/serving/pkg/reconciler/testing"
 )
 
 // CreateRoute creates a route in the given namespace using the route name in names
-func CreateRoute(t *testing.T, clients *Clients, names ResourceNames, fopt ...rtesting.RouteOption) (*v1alpha1.Route, error) {
+func CreateRoute(t *testing.T, clients *Clients, names ResourceNames, fopt ...rtesting.RouteOption) (*v1beta1.Route, error) {
 	route := Route(names, fopt...)
 	LogResourceObject(t, ResourceObjects{Route: route})
 	return clients.ServingClient.Routes.Create(route)

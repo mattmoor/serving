@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/test"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -84,7 +84,7 @@ func TestUpdateConfigurationMetadata(t *testing.T) {
 	}
 
 	t.Logf("Validating labels were not propagated to Revision %s", names.Revision)
-	err = test.CheckRevisionState(clients.ServingClient, names.Revision, func(r *v1alpha1.Revision) (bool, error) {
+	err = test.CheckRevisionState(clients.ServingClient, names.Revision, func(r *v1beta1.Revision) (bool, error) {
 		// Labels we placed on Configuration should _not_ appear on Revision.
 		return checkNoKeysPresent(newLabels, r.Labels, t), nil
 	})
@@ -122,7 +122,7 @@ func TestUpdateConfigurationMetadata(t *testing.T) {
 	}
 
 	t.Logf("Validating annotations were not propagated to Revision %s", names.Revision)
-	err = test.CheckRevisionState(clients.ServingClient, names.Revision, func(r *v1alpha1.Revision) (bool, error) {
+	err = test.CheckRevisionState(clients.ServingClient, names.Revision, func(r *v1beta1.Revision) (bool, error) {
 		// Annotations we placed on Configuration should _not_ appear on Revision.
 		return checkNoKeysPresent(newAnnotations, r.Annotations, t), nil
 	})
@@ -131,7 +131,7 @@ func TestUpdateConfigurationMetadata(t *testing.T) {
 	}
 }
 
-func fetchConfiguration(name string, clients *test.Clients, t *testing.T) *v1alpha1.Configuration {
+func fetchConfiguration(name string, clients *test.Clients, t *testing.T) *v1beta1.Configuration {
 	cfg, err := clients.ServingClient.Configs.Get(name, v1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get configuration %s: %v", name, err)
@@ -141,7 +141,7 @@ func fetchConfiguration(name string, clients *test.Clients, t *testing.T) *v1alp
 
 func waitForConfigurationLatestCreatedRevision(clients *test.Clients, names test.ResourceNames) (string, error) {
 	var revisionName string
-	err := test.WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	err := test.WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		if c.Status.LatestCreatedRevisionName != names.Revision {
 			revisionName = c.Status.LatestCreatedRevisionName
 			return true, nil
@@ -152,13 +152,13 @@ func waitForConfigurationLatestCreatedRevision(clients *test.Clients, names test
 }
 
 func waitForConfigurationLabelsUpdate(clients *test.Clients, names test.ResourceNames, labels map[string]string) error {
-	return test.WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	return test.WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		return reflect.DeepEqual(c.Labels, labels) && c.Generation == c.Status.ObservedGeneration, nil
 	}, "ConfigurationMetadataUpdatedWithLabels")
 }
 
 func waitForConfigurationAnnotationsUpdate(clients *test.Clients, names test.ResourceNames, annotations map[string]string) error {
-	return test.WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	return test.WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		return reflect.DeepEqual(c.Annotations, annotations) && c.Generation == c.Status.ObservedGeneration, nil
 	}, "ConfigurationMetadataUpdatedWithAnnotations")
 }

@@ -21,7 +21,7 @@ package test
 import (
 	"testing"
 
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -42,16 +42,16 @@ type Options struct {
 
 // CreateConfiguration create a configuration resource in namespace with the name names.Config
 // that uses the image specified by names.Image.
-func CreateConfiguration(t *testing.T, clients *Clients, names ResourceNames, options *Options, fopt ...rtesting.ConfigOption) (*v1alpha1.Configuration, error) {
+func CreateConfiguration(t *testing.T, clients *Clients, names ResourceNames, options *Options, fopt ...rtesting.ConfigOption) (*v1beta1.Configuration, error) {
 	config := Configuration(names, options, fopt...)
 	LogResourceObject(t, ResourceObjects{Config: config})
 	return clients.ServingClient.Configs.Create(config)
 }
 
 // PatchConfigImage patches the existing config passed in with a new imagePath. Returns the latest Configuration object
-func PatchConfigImage(clients *Clients, cfg *v1alpha1.Configuration, imagePath string) (*v1alpha1.Configuration, error) {
+func PatchConfigImage(clients *Clients, cfg *v1beta1.Configuration, imagePath string) (*v1beta1.Configuration, error) {
 	newCfg := cfg.DeepCopy()
-	newCfg.Spec.GetTemplate().Spec.GetContainer().Image = imagePath
+	newCfg.Spec.Template.Spec.Containers[0].Image = imagePath
 	patchBytes, err := createPatch(cfg, newCfg)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func PatchConfigImage(clients *Clients, cfg *v1alpha1.Configuration, imagePath s
 // before returning the name of the revision.
 func WaitForConfigLatestRevision(clients *Clients, names ResourceNames) (string, error) {
 	var revisionName string
-	err := WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	err := WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		if c.Status.LatestCreatedRevisionName != names.Revision {
 			revisionName = c.Status.LatestCreatedRevisionName
 			return true, nil
@@ -74,7 +74,7 @@ func WaitForConfigLatestRevision(clients *Clients, names ResourceNames) (string,
 	if err != nil {
 		return "", err
 	}
-	err = WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	err = WaitForConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		return (c.Status.LatestReadyRevisionName == revisionName), nil
 	}, "ConfigurationReadyWithRevision")
 

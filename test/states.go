@@ -22,7 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/serving/pkg/apis/serving"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 )
 
 // states contains functions for asserting against the state of Knative Serving
@@ -31,8 +31,8 @@ import (
 
 // AllRouteTrafficAtRevision will check the revision that route r is routing
 // traffic to and return true if 100% of the traffic is routing to revisionName.
-func AllRouteTrafficAtRevision(names ResourceNames) func(r *v1alpha1.Route) (bool, error) {
-	return func(r *v1alpha1.Route) (bool, error) {
+func AllRouteTrafficAtRevision(names ResourceNames) func(r *v1beta1.Route) (bool, error) {
+	return func(r *v1beta1.Route) (bool, error) {
 		for _, tt := range r.Status.Traffic {
 			if tt.Percent == 100 {
 				if tt.RevisionName != names.Revision {
@@ -52,7 +52,7 @@ func AllRouteTrafficAtRevision(names ResourceNames) func(r *v1alpha1.Route) (boo
 
 // RouteTrafficToRevisionWithInClusterDNS will check the revision that route r is routing
 // traffic using in cluster DNS and return true if the revision received the request.
-func TODO_RouteTrafficToRevisionWithInClusterDNS(r *v1alpha1.Route) (bool, error) {
+func TODO_RouteTrafficToRevisionWithInClusterDNS(r *v1beta1.Route) (bool, error) {
 	if r.Status.Address == nil {
 		return false, fmt.Errorf("expected route %s to implement Addressable, missing .status.address", r.Name)
 	}
@@ -66,7 +66,7 @@ func TODO_RouteTrafficToRevisionWithInClusterDNS(r *v1alpha1.Route) (bool, error
 
 // TODO_ServiceTrafficToRevisionWithInClusterDNS will check the revision that route r is routing
 // traffic using in cluster DNS and return true if the revision received the request.
-func TODO_ServiceTrafficToRevisionWithInClusterDNS(s *v1alpha1.Service) (bool, error) {
+func TODO_ServiceTrafficToRevisionWithInClusterDNS(s *v1beta1.Service) (bool, error) {
 	if s.Status.Address == nil {
 		return false, fmt.Errorf("expected service %s to implement Addressable, missing .status.address", s.Name)
 	}
@@ -81,32 +81,32 @@ func TODO_ServiceTrafficToRevisionWithInClusterDNS(s *v1alpha1.Service) (bool, e
 // IsRevisionReady will check the status conditions of the revision and return true if the revision is
 // ready to serve traffic. It will return false if the status indicates a state other than deploying
 // or being ready. It will also return false if the type of the condition is unexpected.
-func IsRevisionReady(r *v1alpha1.Revision) (bool, error) {
+func IsRevisionReady(r *v1beta1.Revision) (bool, error) {
 	return r.Generation == r.Status.ObservedGeneration && r.Status.IsReady(), nil
 }
 
 // IsServiceReady will check the status conditions of the service and return true if the service is
 // ready. This means that its configurations and routes have all reported ready.
-func IsServiceReady(s *v1alpha1.Service) (bool, error) {
+func IsServiceReady(s *v1beta1.Service) (bool, error) {
 	return s.Generation == s.Status.ObservedGeneration && s.Status.IsReady(), nil
 }
 
 // IsRouteReady will check the status conditions of the route and return true if the route is
 // ready.
-func IsRouteReady(r *v1alpha1.Route) (bool, error) {
+func IsRouteReady(r *v1beta1.Route) (bool, error) {
 	return r.Generation == r.Status.ObservedGeneration && r.Status.IsReady(), nil
 }
 
 // ConfigurationHasCreatedRevision returns whether the Configuration has created a Revision.
-func ConfigurationHasCreatedRevision(c *v1alpha1.Configuration) (bool, error) {
+func ConfigurationHasCreatedRevision(c *v1beta1.Configuration) (bool, error) {
 	return c.Status.LatestCreatedRevisionName != "", nil
 }
 
 // IsConfigRevisionCreationFailed will check the status conditions of the
 // configuration and return true if the configuration's revision failed to
 // create.
-func IsConfigRevisionCreationFailed(c *v1alpha1.Configuration) (bool, error) {
-	if cond := c.Status.GetCondition(v1alpha1.ConfigurationConditionReady); cond != nil {
+func IsConfigRevisionCreationFailed(c *v1beta1.Configuration) (bool, error) {
+	if cond := c.Status.GetCondition(v1beta1.ConfigurationConditionReady); cond != nil {
 		return cond.Status == corev1.ConditionFalse && cond.Reason == "RevisionFailed", nil
 	}
 	return false, nil
@@ -115,8 +115,8 @@ func IsConfigRevisionCreationFailed(c *v1alpha1.Configuration) (bool, error) {
 // IsRevisionAtExpectedGeneration returns a function that will check if the annotations
 // on the revision include an annotation for the generation and that the annotation is
 // set to the expected value.
-func IsRevisionAtExpectedGeneration(expectedGeneration string) func(r *v1alpha1.Revision) (bool, error) {
-	return func(r *v1alpha1.Revision) (bool, error) {
+func IsRevisionAtExpectedGeneration(expectedGeneration string) func(r *v1beta1.Revision) (bool, error) {
+	return func(r *v1beta1.Revision) (bool, error) {
 		if a, ok := r.Labels[serving.ConfigurationGenerationLabelKey]; ok {
 			if a != expectedGeneration {
 				return true, fmt.Errorf("expected Revision %s to be labeled with generation %s but was %s instead", r.Name, expectedGeneration, a)

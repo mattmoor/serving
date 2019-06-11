@@ -28,7 +28,7 @@ import (
 	"github.com/knative/pkg/test/helpers"
 	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	"github.com/knative/serving/pkg/apis/serving/v1beta1"
-	v1alpha1testing "github.com/knative/serving/pkg/reconciler/testing"
+	rtesting "github.com/knative/serving/pkg/reconciler/testing"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,26 +55,24 @@ type ResourceNames struct {
 
 // ResourceObjects holds types of the resource objects.
 type ResourceObjects struct {
-	Route    *v1alpha1.Route
-	Config   *v1alpha1.Configuration
-	Service  *v1alpha1.Service
-	Revision *v1alpha1.Revision
+	Route    *v1beta1.Route
+	Config   *v1beta1.Configuration
+	Service  *v1beta1.Service
+	Revision *v1beta1.Revision
 }
 
 // Route returns a Route object in namespace using the route and configuration
 // names in names.
-func Route(names ResourceNames, fopt ...v1alpha1testing.RouteOption) *v1alpha1.Route {
-	route := &v1alpha1.Route{
+func Route(names ResourceNames, fopt ...rtesting.RouteOption) *v1beta1.Route {
+	route := &v1beta1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: names.Route,
 		},
-		Spec: v1alpha1.RouteSpec{
-			Traffic: []v1alpha1.TrafficTarget{{
-				TrafficTarget: v1beta1.TrafficTarget{
-					Tag:               names.TrafficTarget,
-					ConfigurationName: names.Config,
-					Percent:           100,
-				},
+		Spec: v1beta1.RouteSpec{
+			Traffic: []v1beta1.TrafficTarget{{
+				Tag:               names.TrafficTarget,
+				ConfigurationName: names.Config,
+				Percent:           100,
 			}},
 		},
 	}
@@ -88,7 +86,7 @@ func Route(names ResourceNames, fopt ...v1alpha1testing.RouteOption) *v1alpha1.R
 
 // ConfigurationSpec returns the spec of a configuration to be used throughout different
 // CRD helpers.
-func ConfigurationSpec(imagePath string, options *Options) *v1alpha1.ConfigurationSpec {
+func ConfigurationSpec(imagePath string, options *Options) *v1beta1.ConfigurationSpec {
 	if options.ContainerResources.Limits == nil && options.ContainerResources.Requests == nil {
 		options.ContainerResources = corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
@@ -97,31 +95,29 @@ func ConfigurationSpec(imagePath string, options *Options) *v1alpha1.Configurati
 		}
 	}
 
-	spec := &v1alpha1.ConfigurationSpec{
-		Template: &v1alpha1.RevisionTemplateSpec{
-			Spec: v1alpha1.RevisionSpec{
-				RevisionSpec: v1beta1.RevisionSpec{
-					PodSpec: corev1.PodSpec{
-						Containers: []corev1.Container{{
-							Image:           imagePath,
-							Resources:       options.ContainerResources,
-							ReadinessProbe:  options.ReadinessProbe,
-							Ports:           options.ContainerPorts,
-							SecurityContext: options.SecurityContext,
-						}},
-					},
-					ContainerConcurrency: v1beta1.RevisionContainerConcurrencyType(options.ContainerConcurrency),
+	spec := &v1beta1.ConfigurationSpec{
+		Template: v1beta1.RevisionTemplateSpec{
+			Spec: v1beta1.RevisionSpec{
+				PodSpec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Image:           imagePath,
+						Resources:       options.ContainerResources,
+						ReadinessProbe:  options.ReadinessProbe,
+						Ports:           options.ContainerPorts,
+						SecurityContext: options.SecurityContext,
+					}},
 				},
+				ContainerConcurrency: v1beta1.RevisionContainerConcurrencyType(options.ContainerConcurrency),
 			},
 		},
 	}
 
 	if options.RevisionTimeoutSeconds > 0 {
-		spec.GetTemplate().Spec.TimeoutSeconds = ptr.Int64(options.RevisionTimeoutSeconds)
+		spec.Template.Spec.TimeoutSeconds = ptr.Int64(options.RevisionTimeoutSeconds)
 	}
 
 	if options.EnvVars != nil {
-		spec.GetTemplate().Spec.GetContainer().Env = options.EnvVars
+		spec.Template.Spec.Containers[0].Env = options.EnvVars
 	}
 
 	if len(options.RevisionTemplateAnnotations) != 0 {
@@ -174,15 +170,15 @@ func LegacyConfigurationSpec(imagePath string, options *Options) *v1alpha1.Confi
 
 // Configuration returns a Configuration object in namespace with the name names.Config
 // that uses the image specified by names.Image
-func Configuration(names ResourceNames, options *Options, fopt ...v1alpha1testing.ConfigOption) *v1alpha1.Configuration {
-	config := &v1alpha1.Configuration{
+func Configuration(names ResourceNames, options *Options, fopt ...rtesting.ConfigOption) *v1beta1.Configuration {
+	config := &v1beta1.Configuration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: names.Config,
 		},
 		Spec: *ConfigurationSpec(ptest.ImagePath(names.Image), options),
 	}
 	if options.ContainerPorts != nil && len(options.ContainerPorts) > 0 {
-		config.Spec.GetTemplate().Spec.GetContainer().Ports = options.ContainerPorts
+		config.Spec.Template.Spec.Containers[0].Ports = options.ContainerPorts
 	}
 
 	for _, opt := range fopt {
@@ -194,20 +190,20 @@ func Configuration(names ResourceNames, options *Options, fopt ...v1alpha1testin
 
 // LatestService returns a Service object in namespace with the name names.Service
 // that uses the image specified by names.Image.
-func LatestService(names ResourceNames, options *Options, fopt ...v1alpha1testing.ServiceOption) *v1alpha1.Service {
-	a := append([]v1alpha1testing.ServiceOption{
-		v1alpha1testing.WithInlineConfigSpec(*ConfigurationSpec(ptest.ImagePath(names.Image), options)),
+func LatestService(names ResourceNames, options *Options, fopt ...rtesting.ServiceOption) *v1beta1.Service {
+	a := append([]rtesting.ServiceOption{
+		rtesting.WithInlineConfigSpec(*ConfigurationSpec(ptest.ImagePath(names.Image), options)),
 	}, fopt...)
-	return v1alpha1testing.ServiceWithoutNamespace(names.Service, a...)
+	return rtesting.ServiceWithoutNamespace(names.Service, a...)
 }
 
 // LatestServiceLegacy returns a DeprecatedRunLatest Service object in namespace with the name names.Service
 // that uses the image specified by names.Image.
-func LatestServiceLegacy(names ResourceNames, options *Options, fopt ...v1alpha1testing.ServiceOption) *v1alpha1.Service {
-	a := append([]v1alpha1testing.ServiceOption{
-		v1alpha1testing.WithRunLatestConfigSpec(*LegacyConfigurationSpec(ptest.ImagePath(names.Image), options)),
+func LatestServiceLegacy(names ResourceNames, options *Options, fopt ...rtesting.LegacyServiceOption) *v1alpha1.Service {
+	a := append([]rtesting.LegacyServiceOption{
+		rtesting.WithRunLatestConfigSpec(*LegacyConfigurationSpec(ptest.ImagePath(names.Image), options)),
 	}, fopt...)
-	svc := v1alpha1testing.ServiceWithoutNamespace(names.Service, a...)
+	svc := rtesting.LegacyServiceWithoutNamespace(names.Service, a...)
 	// Clear the name, which is put there by defaulting.
 	svc.Spec.DeprecatedRunLatest.Configuration.GetTemplate().Spec.GetContainer().Name = ""
 	return svc

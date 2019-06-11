@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/test"
 )
 
@@ -43,7 +43,7 @@ func TestCmdArgsService(t *testing.T) {
 
 	// Setup initial Service
 	_, err := test.CreateRunLatestServiceReady(t, clients, &names, &test.Options{},
-		func(svc *v1alpha1.Service) {
+		func(svc *v1beta1.Service) {
 			c := &svc.Spec.Template.Spec.Containers[0]
 			c.Image = names.Image
 			c.Command = []string{"python"}

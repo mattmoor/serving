@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	pkgTest "github.com/knative/pkg/test"
-	"github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/apis/serving/v1beta1"
 	"github.com/knative/serving/test"
 )
 
@@ -58,7 +58,7 @@ func assertResourcesUpdatedWhenRevisionIsReady(t *testing.T, clients *test.Clien
 		t.Fatalf("Revision %s did not have an expected annotation with generation %s: %v", names.Revision, expectedGeneration, err)
 	}
 	t.Log("Updates the Configuration that the Revision is ready")
-	err = test.CheckConfigurationState(clients.ServingClient, names.Config, func(c *v1alpha1.Configuration) (bool, error) {
+	err = test.CheckConfigurationState(clients.ServingClient, names.Config, func(c *v1beta1.Configuration) (bool, error) {
 		return c.Status.LatestReadyRevisionName == names.Revision, nil
 	})
 	if err != nil {
@@ -82,7 +82,7 @@ func getRouteDomain(clients *test.Clients, names test.ResourceNames) (string, er
 	err := test.WaitForRouteState(
 		clients.ServingClient,
 		names.Route,
-		func(r *v1alpha1.Route) (bool, error) {
+		func(r *v1beta1.Route) (bool, error) {
 			domain = r.Status.URL.Host
 			return domain != "", nil
 		},
