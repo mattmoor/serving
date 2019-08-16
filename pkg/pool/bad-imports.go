@@ -17,6 +17,7 @@ limitations under the License.
 package pool
 
 import (
-	_ "k8s.io/apimachinery/pkg/runtime"
 	_ "time"
+
+	_ "k8s.io/apimachinery/pkg/runtime"
 )
