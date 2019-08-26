@@ -70,6 +70,10 @@ spec:
             env:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /var/secret/robot.json
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             volumeMounts:
             - name: service-account
               mountPath: /var/secret

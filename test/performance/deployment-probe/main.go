@@ -60,6 +60,15 @@ func readTemplate() (*v1beta1.Service, error) {
 	if err := yaml.Unmarshal([]byte(b), svc); err != nil {
 		return nil, err
 	}
+
+	svc.OwnerReferences = []metav1.OwnerReference{{
+		APIVersion:         "v1",
+		Kind:               "Pod",
+		Name:               os.Getenv("POD_NAME"),
+		Controller:         ptr.Bool(true),
+		BlockOwnerDeletion: ptr.Bool(true),
+	}}
+
 	return svc, nil
 }
 
