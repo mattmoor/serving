@@ -1654,8 +1654,7 @@
   revision = "53b3cdeccf28a1c67c21820425fe6583c0a34c4f"
 
 [[projects]]
-  branch = "master"
-  digest = "1:c695f3415658f521f10bd3c3ed7f9a86433eafb2ca554ba64c2160d05c9633b0"
+  digest = "1:251ee70f092daa3615405d5866bb9fedcd4f79d5d5ebc9cfb375c7e8eee8d049"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1756,7 +1755,8 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "0c1c6db1df9ea2343a6dbf1290e4325682fcf85d"
+  revision = "5c29b539efeeb2bd7f25101265d48f627ceb85b0"
+  source = "github.com/mattmoor/pkg-1"
 
 [[projects]]
   branch = "master"

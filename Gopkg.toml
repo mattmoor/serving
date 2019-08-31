@@ -28,7 +28,10 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  branch = "master"
+  #TODO(mattmoor): DO NOT SUBMIT
+  source = "github.com/mattmoor/pkg-1"
+  revision = "5c29b539efeeb2bd7f25101265d48f627ceb85b0"
+  # branch = "master"
 
 [[constraint]]
   name = "knative.dev/caching"
