@@ -23,6 +23,9 @@ import (
 	"time"
 
 	vegeta "github.com/tsenart/vegeta/lib"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/ptr"
 	"knative.dev/pkg/signals"
 
 	"knative.dev/pkg/test/mako"
@@ -93,6 +96,10 @@ func main() {
 	// Start the attack!
 	results := attacker.Attack(targeter, rate, *duration, "load-test")
 
+	scaleTick := time.NewTicker(20 * time.Second)
+	defer scaleTick.Stop()
+	kc := kubeclient.Get(ctx)
+
 LOOP:
 	for {
 		select {
@@ -124,6 +131,22 @@ LOOP:
 				isAnError = 0
 			}
 			errors[res.Timestamp.Unix()] += isAnError
+
+		case <-scaleTick.C:
+			d, err := kc.AppsV1().Deployments("knative-serving").Get("activator", metav1.GetOptions{})
+			if err != nil {
+				q.AddError(mako.XTime(time.Now()), err.Error())
+			} else {
+				if *d.Spec.Replicas > 1 {
+					d.Spec.Replicas = ptr.Int32(1)
+				} else {
+					d.Spec.Replicas = ptr.Int32(10)
+				}
+				_, err = kc.AppsV1().Deployments("knative-serving").Update(d)
+				if err != nil {
+					q.AddError(mako.XTime(time.Now()), err.Error())
+				}
+			}
 		}
 	}
 
