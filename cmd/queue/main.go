@@ -517,6 +517,15 @@ func buildAdminServer(healthState *health.State, probe *readiness.Probe, logger 
 	}, probe.IsAggressive()))
 	adminMux.HandleFunc(queue.RequestQueueDrainPath, healthState.DrainHandler())
 
+	adminMux.HandleFunc(queue.DummyProbePath, func(w http.ResponseWriter, r *http.Request) {
+		ph := network.KnativeProbeHeader(r)
+		switch {
+		case ph != "":
+			handleKnativeProbe(w, r, ph, func() bool { return true })
+			return
+		}
+	})
+
 	return &http.Server{
 		Addr:    ":" + strconv.Itoa(networking.QueueAdminPort),
 		Handler: adminMux,

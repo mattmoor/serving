@@ -71,6 +71,28 @@ var (
 	queueSecurityContext = &corev1.SecurityContext{
 		AllowPrivilegeEscalation: ptr.Bool(false),
 	}
+
+	dummyLivenessProbe = &corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path: queue.DummyProbePath,
+				Port: intstr.FromInt(networking.QueueAdminPort),
+				HTTPHeaders: []corev1.HTTPHeader{{
+					Name:  network.ProbeHeaderName,
+					Value: network.ProbeHeaderValue,
+				}, {
+					Name:  network.HashHeaderName,
+					Value: "deadbeef",
+				}},
+			},
+		},
+		// Make these super long so that if it block startup we know.
+		InitialDelaySeconds: 100,
+		PeriodSeconds:       100,
+		TimeoutSeconds:      100,
+		SuccessThreshold:    50,
+		FailureThreshold:    50,
+	}
 )
 
 func createQueueResources(annotations map[string]string, userContainer *corev1.Container) corev1.ResourceRequirements {
@@ -230,6 +252,7 @@ func makeQueueContainer(rev *v1alpha1.Revision, loggingConfig *logging.Config, t
 		Resources:       createQueueResources(rev.GetAnnotations(), rev.Spec.GetContainer()),
 		Ports:           ports,
 		ReadinessProbe:  makeQueueProbe(rp),
+		LivenessProbe:   dummyLivenessProbe,
 		VolumeMounts:    volumeMounts,
 		SecurityContext: queueSecurityContext,
 		Env: []corev1.EnvVar{{
