@@ -28,3 +28,8 @@ dep ensure
 
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
+
+# This partially undoes the change here:
+#   https://github.com/kubernetes/client-go/commit/711082b69fc3f68e22083c637b37ee473da1df31
+# which otherwise breaks our reactor to handle emulating GenerateName semantics.
+sed -i 's/reactor.Handles(actionCopy)/reactor.Handles(action)/g' vendor/k8s.io/client-go/testing/fake.go
