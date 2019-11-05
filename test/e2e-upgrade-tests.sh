@@ -43,12 +43,16 @@ function install_latest_release() {
     "${url}/serving.yaml" \
     || fail_test "Knative latest release installation failed"
   wait_until_pods_running knative-serving
+  # Give it 30s to settle.
+  sleep 30
 }
 
 function install_head() {
   header "Installing Knative head release"
   install_knative_serving || fail_test "Knative head release installation failed"
   wait_until_pods_running knative-serving
+  # Give it 30s to settle.
+  sleep 30
 }
 
 function knative_setup() {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resourcesemantics
+package defaulting
 
 import (
 	"bytes"
@@ -30,7 +30,6 @@ import (
 	"go.uber.org/zap"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1beta1"
@@ -44,15 +43,8 @@ import (
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
-
-// GenericCRD is the interface definition that allows us to perform the generic
-// CRD actions like deciding whether to increment generation and so forth.
-type GenericCRD interface {
-	apis.Defaultable
-	apis.Validatable
-	runtime.Object
-}
 
 var errMissingNewObject = errors.New("the new object may not be nil")
 
@@ -60,7 +52,7 @@ var errMissingNewObject = errors.New("the new object may not be nil")
 type reconciler struct {
 	name     string
 	path     string
-	handlers map[schema.GroupVersionKind]GenericCRD
+	handlers map[schema.GroupVersionKind]resourcesemantics.GenericCRD
 
 	withContext func(context.Context) context.Context
 
@@ -217,10 +209,10 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1beta1.Admissio
 	}
 
 	// nil values denote absence of `old` (create) or `new` (delete) objects.
-	var oldObj, newObj GenericCRD
+	var oldObj, newObj resourcesemantics.GenericCRD
 
 	if len(newBytes) != 0 {
-		newObj = handler.DeepCopyObject().(GenericCRD)
+		newObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
 		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
 		if ac.disallowUnknownFields {
 			newDecoder.DisallowUnknownFields()
@@ -230,7 +222,7 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1beta1.Admissio
 		}
 	}
 	if len(oldBytes) != 0 {
-		oldObj = handler.DeepCopyObject().(GenericCRD)
+		oldObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
 		oldDecoder := json.NewDecoder(bytes.NewBuffer(oldBytes))
 		if ac.disallowUnknownFields {
 			oldDecoder.DisallowUnknownFields()
@@ -258,7 +250,7 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1beta1.Admissio
 	if oldObj != nil {
 		// Copy the old object and set defaults so that we don't reject our own
 		// defaulting done earlier in the webhook.
-		oldObj = oldObj.DeepCopyObject().(GenericCRD)
+		oldObj = oldObj.DeepCopyObject().(resourcesemantics.GenericCRD)
 		oldObj.SetDefaults(ctx)
 
 		s, ok := oldObj.(apis.HasSpec)
@@ -293,17 +285,10 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1beta1.Admissio
 	if newObj == nil {
 		return nil, errMissingNewObject
 	}
-	if err := validate(ctx, newObj); err != nil {
-		logger.Errorw("Failed the resource specific validation", zap.Error(err))
-		// Return the error message as-is to give the validation callback
-		// discretion over (our portion of) the message that the user sees.
-		return nil, err
-	}
-
 	return json.Marshal(patches)
 }
 
-func (ac *reconciler) setUserInfoAnnotations(ctx context.Context, patches duck.JSONPatch, new GenericCRD, groupName string) (duck.JSONPatch, error) {
+func (ac *reconciler) setUserInfoAnnotations(ctx context.Context, patches duck.JSONPatch, new resourcesemantics.GenericCRD, groupName string) (duck.JSONPatch, error) {
 	if new == nil {
 		return patches, nil
 	}
@@ -341,33 +326,8 @@ func roundTripPatch(bytes []byte, unmarshalled interface{}) (duck.JSONPatch, err
 	return jsonpatch.CreatePatch(bytes, marshaledBytes)
 }
 
-// validate performs validation on the provided "new" CRD.
-// For legacy purposes, this also does apis.Immutable validation,
-// which is deprecated and will be removed in a future release.
-func validate(ctx context.Context, new apis.Validatable) error {
-	if apis.IsInUpdate(ctx) {
-		old := apis.GetBaseline(ctx)
-		if immutableNew, ok := new.(apis.Immutable); ok {
-			immutableOld, ok := old.(apis.Immutable)
-			if !ok {
-				return fmt.Errorf("unexpected type mismatch %T vs. %T", old, new)
-			}
-			if err := immutableNew.CheckImmutableFields(ctx, immutableOld); err != nil {
-				return err
-			}
-		}
-	}
-
-	// Can't just `return new.Validate()` because it doesn't properly nil-check.
-	if err := new.Validate(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // setDefaults simply leverages apis.Defaultable to set defaults.
-func setDefaults(ctx context.Context, patches duck.JSONPatch, crd GenericCRD) (duck.JSONPatch, error) {
+func setDefaults(ctx context.Context, patches duck.JSONPatch, crd resourcesemantics.GenericCRD) (duck.JSONPatch, error) {
 	before, after := crd.DeepCopyObject(), crd
 	after.SetDefaults(ctx)
 
