@@ -52,6 +52,7 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/profiling"
+	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/version"
@@ -230,6 +231,18 @@ func WebhookMainWithConfig(ctx context.Context, component string, cfg *rest.Conf
 
 	CheckK8sClientMinimumVersionOrDie(ctx, logger)
 	cmw := SetupConfigMapWatchOrDie(ctx, logger)
+
+	// Set up leader election config
+	leaderElectionConfig, err := GetLeaderElectionConfig(ctx)
+	if err != nil {
+		logger.Fatalf("Error loading leader election configuration: %v", err)
+	}
+	leConfig := leaderElectionConfig.GetComponentConfig(component)
+	if leConfig.LeaderElect {
+		// Signal that we are executing in a context with leader election.
+		ctx = kle.WithLeaderElectorBuilder(ctx, kubeclient.Get(ctx), leConfig)
+	}
+
 	controllers, webhooks := ControllersAndWebhooksFromCtors(ctx, cmw, ctors...)
 	WatchLoggingConfigOrDie(ctx, cmw, logger, atomicLevel, component)
 	WatchObservabilityConfigOrDie(ctx, cmw, profilingHandler, logger, component)
@@ -240,7 +253,6 @@ func WebhookMainWithConfig(ctx context.Context, component string, cfg *rest.Conf
 	// If we have one or more admission controllers, then start the webhook
 	// and pass them in.
 	var wh *webhook.Webhook
-	var err error
 	if len(webhooks) > 0 {
 		// Register webhook metrics
 		webhook.RegisterMetrics()
@@ -398,6 +410,9 @@ func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
 func ControllersAndWebhooksFromCtors(ctx context.Context,
 	cmw *configmap.InformedWatcher,
 	ctors ...injection.ControllerConstructor) ([]*controller.Impl, []interface{}) {
+
+	leEnabled := kle.HasLeaderElection(ctx)
+
 	controllers := make([]*controller.Impl, 0, len(ctors))
 	webhooks := make([]interface{}, 0)
 	for _, cf := range ctors {
@@ -408,6 +423,12 @@ func ControllersAndWebhooksFromCtors(ctx context.Context,
 		switch c := ctrl.Reconciler.(type) {
 		case webhook.AdmissionController, webhook.ConversionController:
 			webhooks = append(webhooks, c)
+		}
+
+		if leEnabled {
+			if _, ok := ctrl.Reconciler.(reconciler.LeaderAware); !ok {
+				log.Fatalf("%T is not leader-aware, all reconcilers must be leader-aware to enable leader election.", ctrl.Reconciler)
+			}
 		}
 	}
 

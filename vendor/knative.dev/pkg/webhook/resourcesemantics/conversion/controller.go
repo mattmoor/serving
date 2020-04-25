@@ -29,6 +29,7 @@ import (
 	"knative.dev/pkg/controller"
 	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
 	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 )
@@ -89,7 +90,6 @@ func NewConversionController(
 	withContext func(context.Context) context.Context,
 ) *controller.Impl {
 
-	logger := logging.FromContext(ctx)
 	secretInformer := secretinformer.Get(ctx)
 	crdInformer := crdinformer.Get(ctx)
 	client := apixclient.Get(ctx)
@@ -106,7 +106,20 @@ func NewConversionController(
 		crdLister:    crdInformer.Lister(),
 	}
 
-	c := controller.NewImpl(r, logger, "ConversionWebhook")
+	c := controller.NewImpl(r, logging.FromContext(ctx), "ConversionWebhook")
+
+	// Add leader awareness to this reconciler by having it enqueue our types
+	// whenever it becomes leader.
+	r.LeaderAware = &pkgreconciler.LeaderAwareFuncs{
+		PromoteFunc: func(enq func(types.NamespacedName)) {
+			for _, gkc := range kinds {
+				name := gkc.DefinitionName
+				enq(types.NamespacedName{Name: name})
+			}
+		},
+		// TODO(mattmoor): Consider only specifying `client` when we are
+		// leader as a defense in depth against non-leader mutations.
+	}
 
 	// Reconciler when the named CRDs change.
 	for _, gkc := range kinds {

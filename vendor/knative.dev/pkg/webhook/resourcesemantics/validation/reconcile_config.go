@@ -33,6 +33,7 @@ import (
 	"knative.dev/pkg/kmp"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
@@ -42,6 +43,7 @@ import (
 // reconciler implements the AdmissionController for resources
 type reconciler struct {
 	webhook.StatelessAdmissionImpl
+	pkgreconciler.LeaderAware
 
 	name      string
 	path      string
@@ -59,6 +61,7 @@ type reconciler struct {
 }
 
 var _ controller.Reconciler = (*reconciler)(nil)
+var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
 var _ webhook.AdmissionController = (*reconciler)(nil)
 var _ webhook.StatelessAdmissionController = (*reconciler)(nil)
 
@@ -70,6 +73,11 @@ func (ac *reconciler) Path() string {
 // Reconcile implements controller.Reconciler
 func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
+
+	if !ac.IsLeader() {
+		logger.Debugf("Skipping key %q, not the leader.", key)
+		return nil
+	}
 
 	// Look up the webhook secret, and fetch the CA cert bundle.
 	secret, err := ac.secretlister.Secrets(system.Namespace()).Get(ac.secretName)

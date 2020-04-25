@@ -22,11 +22,13 @@ import (
 	// Injection stuff
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
+	"knative.dev/pkg/logging"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 )
@@ -52,8 +54,20 @@ func NewController(
 		secretlister: secretInformer.Lister(),
 	}
 
-	logger := logging.FromContext(ctx)
-	c := controller.NewImpl(wh, logger, "WebhookCertificates")
+	c := controller.NewImpl(wh, logging.FromContext(ctx), "WebhookCertificates")
+
+	// Add leader awareness to this reconciler by having it enqueue our singleton
+	// whenever it becomes leader.
+	wh.LeaderAware = &pkgreconciler.LeaderAwareFuncs{
+		PromoteFunc: func(enq func(types.NamespacedName)) {
+			enq(types.NamespacedName{
+				Namespace: system.Namespace(),
+				Name:      wh.secretName,
+			})
+		},
+		// TODO(mattmoor): Consider only specifying `client` when we are
+		// leader as a defense in depth against non-leader mutations.
+	}
 
 	// Reconcile when the cert bundle changes.
 	secretInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

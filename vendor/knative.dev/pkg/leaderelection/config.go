@@ -17,14 +17,23 @@ limitations under the License.
 package leaderelection
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/reconciler"
+	"knative.dev/pkg/system"
 )
 
 const ConfigMapNameEnv = "CONFIG_LEADERELECTION_NAME"
@@ -156,4 +165,85 @@ func UniqueID() (string, error) {
 	}
 
 	return id + "_" + string(uuid.NewUUID()), nil
+}
+
+func WithLeaderElectorBuilder(ctx context.Context, kc kubernetes.Interface, cc ComponentConfig) context.Context {
+	return context.WithValue(ctx, builderKey{}, &builder{
+		kc:  kc,
+		lec: cc,
+	})
+}
+
+// HasLeaderElection returns whether there is leader election configuration
+// associated with the context
+func HasLeaderElection(ctx context.Context) bool {
+	val := ctx.Value(builderKey{})
+	return val != nil
+}
+
+func BuildElector(ctx context.Context, la reconciler.LeaderAware, name string, enq func(types.NamespacedName)) (*leaderelection.LeaderElector, error) {
+	val := ctx.Value(builderKey{})
+	if val == nil {
+		return nil, errors.New("Builder not found")
+	}
+	return val.(*builder).BuildElector(ctx, la, name, enq)
+}
+
+type builderKey struct{}
+
+type builder struct {
+	kc  kubernetes.Interface
+	lec ComponentConfig
+}
+
+func (b *builder) BuildElector(ctx context.Context, la reconciler.LeaderAware, name string, enq func(types.NamespacedName)) (*leaderelection.LeaderElector, error) {
+	logger := logging.FromContext(ctx)
+
+	id, err := UniqueID()
+	if err != nil {
+		return nil, err
+	}
+
+	// Lowercase {component}.{workqueue} is used as the resource name.
+	componentName := strings.ToLower(b.lec.Component + "." + name)
+
+	rl, err := resourcelock.New(b.lec.ResourceLock,
+		system.Namespace(), // use namespace we are running in
+		componentName,
+		b.kc.CoreV1(),
+		b.kc.CoordinationV1(),
+		resourcelock.ResourceLockConfig{
+			Identity: id,
+		})
+	if err != nil {
+		return nil, err
+	}
+	logger.Infof("%s.%s will run in leader-elected mode with id %q", b.lec.Component, name, rl.Identity())
+
+	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
+		Lock:          rl,
+		LeaseDuration: b.lec.LeaseDuration,
+		RenewDeadline: b.lec.RenewDeadline,
+		RetryPeriod:   b.lec.RetryPeriod,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(context.Context) {
+				logger.Infof("%q has started leading %q", rl.Identity(), componentName)
+				la.Promote(enq)
+			},
+			OnStoppedLeading: func() {
+				logger.Infof("%q has stopped leading %q", rl.Identity(), componentName)
+				la.Demote()
+			},
+		},
+		// TODO: use health check watchdog, knative/pkg#1048
+		Name: b.lec.Component,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// TODO: use health check watchdog, knative/pkg#1048
+	// if lec.WatchDog != nil {
+	// 	lec.WatchDog.SetLeaderElection(le)
+	// }
+	return le, nil
 }

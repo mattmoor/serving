@@ -24,11 +24,13 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	vwhinformer "knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration"
 	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
+	"knative.dev/pkg/logging"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 )
@@ -61,8 +63,17 @@ func NewAdmissionController(
 		wh.registerConfig(configName, constructor)
 	}
 
-	logger := logging.FromContext(ctx)
-	c := controller.NewImpl(wh, logger, "ConfigMapWebhook")
+	c := controller.NewImpl(wh, logging.FromContext(ctx), "ConfigMapWebhook")
+
+	// Add leader awareness to this reconciler by having it enqueue our singleton
+	// whenever it becomes leader.
+	wh.LeaderAware = &pkgreconciler.LeaderAwareFuncs{
+		PromoteFunc: func(enq func(types.NamespacedName)) {
+			enq(types.NamespacedName{Name: name})
+		},
+		// TODO(mattmoor): Consider only specifying `client` when we are
+		// leader as a defense in depth against non-leader mutations.
+	}
 
 	// Reconcile when the named ValidatingWebhookConfiguration changes.
 	vwhInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

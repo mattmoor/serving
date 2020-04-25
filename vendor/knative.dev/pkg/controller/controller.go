@@ -31,12 +31,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	"knative.dev/pkg/kmeta"
+	kle "knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
+	"knative.dev/pkg/reconciler"
 )
 
 const (
@@ -157,6 +160,10 @@ func FilterWithNameAndNamespace(namespace, name string) func(obj interface{}) bo
 // Impl is our core controller implementation.  It handles queuing and feeding work
 // from the queue to an implementation of Reconciler.
 type Impl struct {
+	// Name is the unique name for this controller workqueue within this process.
+	// This is used for surfacing metrics, and per-controller leader election.
+	Name string
+
 	// Reconciler is the workhorse of this controller, it is fed the keys
 	// from the workqueue to process.  Public for testing.
 	Reconciler Reconciler
@@ -187,6 +194,7 @@ func NewImpl(r Reconciler, logger *zap.SugaredLogger, workQueueName string) *Imp
 
 func NewImplWithStats(r Reconciler, logger *zap.SugaredLogger, workQueueName string, reporter StatsReporter) *Impl {
 	return &Impl{
+		Name:       workQueueName,
 		Reconciler: r,
 		WorkQueue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
@@ -334,6 +342,7 @@ func (c *Impl) EnqueueKeyAfter(key types.NamespacedName, delay time.Duration) {
 // internal work queue and waits for workers to finish processing their current
 // work items.
 func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
+	logger := c.logger
 	defer runtime.HandleCrash()
 	sg := sync.WaitGroup{}
 	defer sg.Wait()
@@ -344,8 +353,29 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 		}
 	}()
 
+	if la, ok := c.Reconciler.(reconciler.LeaderAware); ok {
+		// This reconciler is leader aware, so it will only do work
+		// after it has been promoted to leader.
+		if kle.HasLeaderElection(ctx) {
+			// If we are executing in a context with leader election, then build
+			// our leader elector.
+			le, err := kle.BuildElector(ctx, la, c.Name, c.EnqueueKey)
+			if err != nil {
+				return err
+			}
+			sg.Add(1)
+			go func() {
+				defer sg.Done()
+				runUntilCancelled(ctx, le)
+			}()
+		} else {
+			// If we are not performing leader election, then promote it and be done.
+			logger.Infof("Not performing leader election, promoting %s", c.Name)
+			la.Promote(c.EnqueueKey)
+		}
+	}
+
 	// Launch workers to process resources that get enqueued to our workqueue.
-	logger := c.logger
 	logger.Info("Starting controller and workers")
 	for i := 0; i < threadiness; i++ {
 		sg.Add(1)
@@ -361,6 +391,26 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 	logger.Info("Shutting down workers")
 
 	return nil
+}
+
+func runUntilCancelled(ctx context.Context, le *leaderelection.LeaderElector) {
+	// Run executes a single iteration of an election:
+	// 1. Wait to become leader
+	// 2. Call OnStartedLeading
+	// 3. Wait for ctx cancel or loss of leader.
+	// 4. Call OnStoppedLeading
+	//
+	// We effectively want this in a loop, where the termination
+	// condition is cancellation of our context.
+	for {
+		le.Run(ctx)
+		select {
+		case <-ctx.Done():
+			return // Run quit because context was cancelled, we are done!
+		default:
+			// Context wasn't cancelled, start over.
+		}
+	}
 }
 
 // DEPRECATED use RunContext instead.

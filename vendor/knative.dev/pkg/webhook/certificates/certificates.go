@@ -27,6 +27,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
@@ -37,6 +38,8 @@ const (
 )
 
 type reconciler struct {
+	pkgreconciler.LeaderAware
+
 	client       kubernetes.Interface
 	secretlister corelisters.SecretLister
 	secretName   string
@@ -44,10 +47,15 @@ type reconciler struct {
 }
 
 var _ controller.Reconciler = (*reconciler)(nil)
+var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
 
 // Reconcile implements controller.Reconciler
 func (r *reconciler) Reconcile(ctx context.Context, key string) error {
-	return r.reconcileCertificate(ctx)
+	if r.IsLeader() {
+		// only reconciler the certificate when we are leader.
+		return r.reconcileCertificate(ctx)
+	}
+	return nil
 }
 
 func (r *reconciler) reconcileCertificate(ctx context.Context) error {
