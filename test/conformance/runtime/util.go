@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	pkgTest "knative.dev/pkg/test"
-	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/test"
 	"knative.dev/serving/test/types"
 
@@ -49,11 +48,6 @@ func fetchRuntimeInfo(
 		return nil, nil, err
 	}
 
-	serviceOpts = append(serviceOpts, func(svc *v1.Service) {
-		// Always fetch the latest runtime image.
-		svc.Spec.Template.Spec.Containers[0].ImagePullPolicy = "Always"
-	})
-
 	objects, err := v1test.CreateServiceReady(t, clients, names,
 		serviceOpts...)
 	if err != nil {
@@ -68,7 +62,7 @@ func fetchRuntimeInfo(
 		v1test.RetryingRouteInconsistency(pkgTest.IsStatusOK),
 		"RuntimeInfo",
 		test.ServingFlags.ResolvableDomain,
-		append(reqOpts, test.AddRootCAtoTransport(context.Background(), t.Logf, clients, test.ServingFlags.Https))...)
+		append(reqOpts, test.AddRootCAtoTransport(context.Background(), t.Logf, clients, test.ServingFlags.HTTPS))...)
 	if err != nil {
 		return nil, nil, err
 	}

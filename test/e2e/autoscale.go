@@ -73,22 +73,20 @@ func getVegetaTarget(kubeClientset *kubernetes.Clientset, domain, endpointOverri
 		}, nil
 	}
 
-	endpoint := endpointOverride
-	if endpointOverride == "" {
-		var err error
-		// If the domain that the Route controller is configured to assign to Route.Status.Domain
-		// (the domainSuffix) is not resolvable, we need to retrieve the endpoint and spoof
-		// the Host in our requests.
-		if endpoint, err = ingress.GetIngressEndpoint(context.Background(), kubeClientset); err != nil {
-			return vegeta.Target{}, err
-		}
+	var err error
+	// If the domain that the Route controller is configured to assign to Route.Status.Domain
+	// (the domainSuffix) is not resolvable, we need to retrieve the endpoint and spoof
+	// the Host in our requests.
+	endpoint, mapper, err := ingress.GetIngressEndpoint(context.Background(), kubeClientset, endpointOverride)
+	if err != nil {
+		return vegeta.Target{}, err
 	}
 
 	h := http.Header{}
 	h.Set("Host", domain)
 	return vegeta.Target{
 		Method: http.MethodGet,
-		URL:    fmt.Sprintf("http://%s?sleep=%d", endpoint, autoscaleSleep),
+		URL:    fmt.Sprintf("http://%s:%s?sleep=%d", endpoint, mapper("80"), autoscaleSleep),
 		Header: h,
 	}, nil
 }
@@ -169,7 +167,7 @@ func validateEndpoint(t *testing.T, clients *test.Clients, names test.ResourceNa
 		v1test.RetryingRouteInconsistency(pkgTest.MatchesAllOf(pkgTest.IsStatusOK)),
 		"CheckingEndpointAfterUpdating",
 		test.ServingFlags.ResolvableDomain,
-		test.AddRootCAtoTransport(ctx, t.Logf, clients, test.ServingFlags.Https),
+		test.AddRootCAtoTransport(ctx, t.Logf, clients, test.ServingFlags.HTTPS),
 	)
 	return err
 }
@@ -205,10 +203,12 @@ func setup(t *testing.T, class, metric string, target int, targetUtilization flo
 				autoscaling.WindowAnnotationKey: "50s",
 			}), rtesting.WithResourceRequirements(corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
+					corev1.ResourceCPU:    resource.MustParse("100m"),
+					corev1.ResourceMemory: resource.MustParse("128Mi"),
 				},
 				Requests: corev1.ResourceList{
-					corev1.ResourceMemory: resource.MustParse("300Mi"),
+					corev1.ResourceCPU:    resource.MustParse("30m"),
+					corev1.ResourceMemory: resource.MustParse("20Mi"),
 				},
 			}),
 		}, fopts...)...)
@@ -308,16 +308,10 @@ func checkPodScale(ctx *testContext, targetPods, minPods, maxPods float64, durat
 				return errors.New("interim scale didn't fulfill constraints: " + mes)
 			}
 			// A quick test succeeds when the number of pods scales up to `targetPods`
-			// (and, for sanity check, no more than `maxPods`).
-			if got >= targetPods && got <= maxPods {
-				if quick {
-					// A quick test succeeds when the number of pods scales up to `targetPods`
-					// (and, for sanity check, no more than `maxPods`).
-					if got >= targetPods && got <= maxPods {
-						ctx.t.Logf("Quick Mode: got %v >= %v", got, targetPods)
-						return nil
-					}
-				}
+			// (and, as an extra check, no more than `maxPods`).
+			if quick && got >= targetPods && got <= maxPods {
+				ctx.t.Logf("Quick Mode: got %v >= %v", got, targetPods)
+				return nil
 			}
 			if minPods < targetPods-1 {
 				// Increase `minPods`, but leave room to reduce flakiness.
@@ -376,9 +370,9 @@ func assertAutoscaleUpToNumPods(ctx *testContext, curPods, targetPods float64, d
 	}
 }
 
-// RunAutoscaleUpCountPods is a test kernel to test the chosen autoscaler using the given
+// runAutoscaleUpCountPods is a test kernel to test the chosen autoscaler using the given
 // metric tracks the given target.
-func RunAutoscaleUpCountPods(t *testing.T, class, metric string) {
+func runAutoscaleUpCountPods(t *testing.T, class, metric string) {
 	target := containerConcurrency
 	if metric == autoscaling.RPS {
 		target = 10

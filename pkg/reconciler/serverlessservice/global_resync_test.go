@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -125,7 +125,7 @@ func TestGlobalResyncOnActivatorChange(t *testing.T) {
 
 	// Actively wait for the endpoints to change their value.
 	eps := fakeendpointsinformer.Get(ctx).Lister()
-	if err := wait.PollImmediate(10*time.Millisecond, 3*time.Second, func() (bool, error) {
+	if err := wait.PollImmediate(25*time.Millisecond, 5*time.Second, func() (bool, error) {
 		ep, err := eps.Endpoints(ns1).Get(sks1)
 		if err != nil {
 			return false, err

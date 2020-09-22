@@ -22,6 +22,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"testing"
 
 	"golang.org/x/sync/errgroup"
 
@@ -34,7 +35,7 @@ import (
 )
 
 func checkForExpectedResponses(t pkgTest.TLegacy, clients *test.Clients, url *url.URL, expectedResponses ...string) error {
-	client, err := pkgTest.NewSpoofingClient(context.Background(), clients.KubeClient, t.Logf, url.Hostname(), test.ServingFlags.ResolvableDomain, test.AddRootCAtoTransport(context.Background(), t.Logf, clients, test.ServingFlags.Https))
+	client, err := pkgTest.NewSpoofingClient(context.Background(), clients.KubeClient, t.Logf, url.Hostname(), test.ServingFlags.ResolvableDomain, test.AddRootCAtoTransport(context.Background(), t.Logf, clients, test.ServingFlags.HTTPS))
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func validateRunLatestDataPlane(t pkgTest.TLegacy, clients *test.Clients, names 
 		v1a1test.RetryingRouteInconsistency(pkgTest.MatchesAllOf(pkgTest.IsStatusOK, pkgTest.EventuallyMatchesBody(expectedText))),
 		"WaitForEndpointToServeText",
 		test.ServingFlags.ResolvableDomain,
-		test.AddRootCAtoTransport(context.Background(), t.Logf, clients, test.ServingFlags.Https))
+		test.AddRootCAtoTransport(context.Background(), t.Logf, clients, test.ServingFlags.HTTPS))
 	if err != nil {
 		return fmt.Errorf("the endpoint for Route %s at %s didn't serve the expected text %q: %w", names.Route, names.URL.String(), expectedText, err)
 	}
@@ -119,16 +120,13 @@ func validateRunLatestDataPlane(t pkgTest.TLegacy, clients *test.Clients, names 
 // Validates the state of Configuration, Revision, and Route objects for a runLatest Service.
 // The checks in this method should be able to be performed at any point in a
 // runLatest Service's lifecycle so long as the service is in a "Ready" state.
-func validateRunLatestControlPlane(t pkgTest.T, clients *test.Clients, names test.ResourceNames, expectedGeneration string) error {
+func validateRunLatestControlPlane(t *testing.T, clients *test.Clients, names test.ResourceNames, expectedGeneration string) error {
 	t.Log("Checking to ensure Revision is in desired state with", "generation", expectedGeneration)
 	err := v1a1test.CheckRevisionState(clients.ServingAlphaClient, names.Revision, func(r *v1alpha1.Revision) (bool, error) {
 		if ready, err := v1a1test.IsRevisionReady(r); !ready {
 			return false, fmt.Errorf("revision %s did not become ready to serve traffic: %w", names.Revision, err)
 		}
-		if r.Status.DeprecatedImageDigest == "" {
-			return false, fmt.Errorf("imageDigest not present for revision %s", names.Revision)
-		}
-		if validDigest, err := shared.ValidateImageDigest(names.Image, r.Status.DeprecatedImageDigest); !validDigest {
+		if validDigest, err := shared.ValidateImageDigest(t, names.Image, r.Status.DeprecatedImageDigest); !validDigest {
 			return false, fmt.Errorf("imageDigest %s is not valid for imageName %s: %w", r.Status.DeprecatedImageDigest, names.Image, err)
 		}
 		return true, nil

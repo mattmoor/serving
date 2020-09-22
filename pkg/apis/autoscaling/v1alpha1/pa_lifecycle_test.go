@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package v1alpha1
 
 import (
@@ -29,7 +30,7 @@ import (
 	apistest "knative.dev/pkg/apis/testing"
 	"knative.dev/pkg/ptr"
 	"knative.dev/serving/pkg/apis/autoscaling"
-	autoscalerconfig "knative.dev/serving/pkg/autoscaler/config"
+	"knative.dev/serving/pkg/autoscaler/config/autoscalerconfig"
 )
 
 func TestPodAutoscalerDuckTypes(t *testing.T) {
