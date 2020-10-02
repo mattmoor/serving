@@ -44,6 +44,13 @@ var (
 		},
 	}
 
+	entrypointVolume = corev1.Volume{
+		Name: "knative-entrypoint",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+
 	varLogVolumeMount = corev1.VolumeMount{
 		Name:        varLogVolume.Name,
 		MountPath:   "/var/log",
@@ -133,6 +140,11 @@ func BuildUserContainers(rev *v1.Revision) []corev1.Container {
 				container.Image = rev.Status.ContainerStatuses[i].ImageDigest
 			}
 		}
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "knative-entrypoint",
+			ReadOnly:  true,
+			MountPath: queue.EntrypointPrefix,
+		})
 		containers = append(containers, container)
 	}
 	return containers
@@ -177,6 +189,7 @@ func makeServingContainer(servingContainer corev1.Container, rev *v1.Revision) c
 func BuildPodSpec(rev *v1.Revision, containers []corev1.Container, cfg *config.Config) *corev1.PodSpec {
 	pod := rev.Spec.PodSpec.DeepCopy()
 	pod.Containers = containers
+	pod.Volumes = append([]corev1.Volume{entrypointVolume}, rev.Spec.Volumes...)
 	pod.TerminationGracePeriodSeconds = rev.Spec.TimeoutSeconds
 	if cfg != nil && pod.EnableServiceLinks == nil {
 		pod.EnableServiceLinks = cfg.Defaults.EnableServiceLinks

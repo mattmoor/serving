@@ -21,8 +21,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"path/filepath"
 	"os"
 	"strconv"
 	"time"
@@ -104,6 +106,11 @@ func init() {
 }
 
 func main() {
+	if queue.IsEntrypoint() {
+		queue.Entrypoint(signals.NewContext())
+		return
+	}
+
 	flag.Parse()
 
 	// If this is set, we run as a standalone binary to probe the queue-proxy.
@@ -116,6 +123,15 @@ func main() {
 		}
 
 		os.Exit(standaloneProbeMain(*readinessProbeTimeout, transport))
+	}
+
+	// Copy the queue binary to the shared volume.
+	for modeName := range queue.EntrypointModes {
+		if err := cp(os.Args[0], filepath.Join(queue.EntrypointPrefix, modeName)); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		// TODO(mattmoor): When there are multiple modes use links.
 	}
 
 	// Otherwise, we run as the queue-proxy service.
@@ -450,4 +466,23 @@ func flush(logger *zap.SugaredLogger) {
 	os.Stdout.Sync()
 	os.Stderr.Sync()
 	metrics.FlushExporter()
+}
+
+func cp(src, dst string) error {
+	s, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	// Owner has permission to write and execute, and anybody has
+	// permission to execute.
+	d, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0311)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	return err
 }

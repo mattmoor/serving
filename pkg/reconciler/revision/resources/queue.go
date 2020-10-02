@@ -272,6 +272,11 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 		Ports:           ports,
 		ReadinessProbe:  makeQueueProbe(rp),
 		SecurityContext: queueSecurityContext,
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "knative-entrypoint",
+			ReadOnly:  false,
+			MountPath: queue.EntrypointPrefix,
+		}},
 		Env: []corev1.EnvVar{{
 			Name:  "SERVING_NAMESPACE",
 			Value: rev.Namespace,
